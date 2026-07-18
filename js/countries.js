@@ -1,77 +1,106 @@
-// Curated playable countries and difficulty tiers.
-// Keys are the exact `properties.name` values from world-atlas countries-50m.json.
-// Tier 1 = very easy … 5 = expert. Anything not listed renders as a
-// non-playable territory (muted color, never asked).
-// Tiering rule of thumb: fame of the NAME is not enough — the tier reflects
-// how hard the LOCATION is to pin down (e.g. Kazakhstan or Nigeria are
-// household names but sit in confusable clusters, so they are Medium).
+// Curated playable countries, organized as ordered LEVELS (easiest first).
+// Country keys are the exact `properties.name` values from world-atlas
+// countries-50m.json. Anything not listed renders as a non-playable
+// territory (muted color, never asked).
+// Each level holds 20-30 countries grouped by difficulty and theme, so a
+// "series" (one full pass over a level) stays a satisfying session length.
 
 import { getLang } from './i18n.js';
 
-export const TIER_ICONS = ['🟢', '🔵', '🟡', '🟠', '🔴'];
+export const LEVELS = [
+  {
+    n: 1, en: 'World Giants', fr: 'Les géants du monde',
+    countries: [
+      'United States of America', 'Canada', 'Mexico', 'Brazil', 'Argentina',
+      'Russia', 'China', 'India', 'Australia', 'Egypt', 'South Africa',
+      'France', 'Germany', 'Spain', 'Italy', 'United Kingdom', 'Japan',
+      'Turkey', 'Saudi Arabia', 'Indonesia',
+    ],
+  },
+  {
+    n: 2, en: 'Tour of Europe', fr: "Tour d'Europe",
+    countries: [
+      'Portugal', 'Ireland', 'Iceland', 'Norway', 'Sweden', 'Finland',
+      'Denmark', 'Netherlands', 'Belgium', 'Switzerland', 'Austria',
+      'Poland', 'Greece', 'Ukraine', 'Czechia', 'Slovakia', 'Hungary',
+      'Romania', 'Bulgaria', 'Croatia', 'Serbia', 'Belarus', 'Lithuania',
+      'Latvia', 'Estonia',
+    ],
+  },
+  {
+    n: 3, en: 'Asia & Middle East', fr: 'Asie et Moyen-Orient',
+    countries: [
+      'South Korea', 'North Korea', 'Vietnam', 'Thailand', 'Philippines',
+      'Pakistan', 'Iran', 'Israel', 'Mongolia', 'New Zealand', 'Kazakhstan',
+      'Afghanistan', 'Iraq', 'Malaysia', 'Myanmar', 'Bangladesh',
+      'Sri Lanka', 'Nepal', 'Cambodia', 'Laos', 'Syria', 'Jordan', 'Yemen',
+      'Oman', 'United Arab Emirates', 'Qatar', 'Kuwait',
+    ],
+  },
+  {
+    n: 4, en: 'Across the Americas', fr: 'Cap sur les Amériques',
+    countries: [
+      'Colombia', 'Venezuela', 'Peru', 'Chile', 'Cuba', 'Bolivia',
+      'Ecuador', 'Paraguay', 'Uruguay', 'Panama', 'Costa Rica',
+      'Guatemala', 'Honduras', 'Nicaragua', 'Dominican Rep.', 'Haiti',
+      'Jamaica', 'Belize', 'El Salvador', 'Guyana', 'Suriname',
+      'Trinidad and Tobago', 'Bahamas',
+    ],
+  },
+  {
+    n: 5, en: 'The Great African Crossing', fr: "La grande traversée de l'Afrique",
+    countries: [
+      'Morocco', 'Algeria', 'Libya', 'Madagascar', 'Ethiopia', 'Kenya',
+      'Nigeria', 'Tunisia', 'Mali', 'Niger', 'Chad', 'Sudan', 'Somalia',
+      'Tanzania', 'Mozambique', 'Angola', 'Namibia', 'Botswana',
+      'Zimbabwe', 'Zambia', 'Ghana', 'Senegal', 'Cameroon',
+      'Dem. Rep. Congo',
+    ],
+  },
+  {
+    n: 6, en: 'Africa in Detail', fr: "L'Afrique en détail",
+    countries: [
+      'Benin', 'Togo', 'Burkina Faso', "Côte d'Ivoire", 'Guinea',
+      'Sierra Leone', 'Liberia', 'Mauritania', 'Gabon', 'Congo',
+      'Central African Rep.', 'S. Sudan', 'Eritrea', 'Djibouti', 'Uganda',
+      'Rwanda', 'Burundi', 'Malawi', 'Lesotho', 'eSwatini', 'Eq. Guinea',
+      'Guinea-Bissau', 'Gambia',
+    ],
+  },
+  {
+    n: 7, en: 'Small Countries, Big Challenge', fr: 'Petits pays, grands défis',
+    countries: [
+      'Albania', 'Bosnia and Herz.', 'Macedonia', 'Montenegro', 'Slovenia',
+      'Moldova', 'Kosovo', 'Cyprus', 'Malta', 'Luxembourg', 'Uzbekistan',
+      'Azerbaijan', 'Georgia', 'Armenia', 'Kyrgyzstan', 'Tajikistan',
+      'Turkmenistan', 'Bhutan', 'Taiwan', 'Brunei', 'Timor-Leste',
+      'Papua New Guinea', 'Singapore', 'Lebanon', 'Bahrain', 'Fiji',
+    ],
+  },
+  {
+    n: 8, en: 'Microstates & Ends of the Earth', fr: 'Micro-États et bouts du monde',
+    countries: [
+      'Andorra', 'Liechtenstein', 'Monaco', 'San Marino', 'Vatican',
+      'Comoros', 'Cabo Verde', 'São Tomé and Principe', 'Seychelles',
+      'Mauritius', 'Maldives', 'Solomon Is.', 'Vanuatu', 'Samoa', 'Tonga',
+      'Kiribati', 'Micronesia', 'Marshall Is.', 'Palau', 'Nauru',
+      'St. Kitts and Nevis', 'Antigua and Barb.', 'Dominica',
+      'Saint Lucia', 'St. Vin. and Gren.', 'Grenada', 'Barbados',
+      'W. Sahara', 'Palestine',
+    ],
+  },
+];
 
-export const TIERS = {
-  // ---- Tier 1: very easy — huge and/or iconic ----
-  'United States of America': 1, 'Canada': 1, 'Mexico': 1, 'Brazil': 1,
-  'Argentina': 1, 'Russia': 1, 'China': 1, 'India': 1, 'Australia': 1,
-  'Egypt': 1, 'South Africa': 1, 'France': 1, 'Germany': 1, 'Spain': 1,
-  'Italy': 1, 'United Kingdom': 1, 'Japan': 1, 'Turkey': 1,
-  'Saudi Arabia': 1, 'Indonesia': 1,
+const NAME_TO_LEVEL = new Map();
+for (const lvl of LEVELS) for (const c of lvl.countries) NAME_TO_LEVEL.set(c, lvl.n);
 
-  // ---- Tier 2: easy — well-known, distinctive shape or location ----
-  'Portugal': 2, 'Ireland': 2, 'Iceland': 2, 'Norway': 2, 'Sweden': 2,
-  'Finland': 2, 'Denmark': 2, 'Netherlands': 2, 'Belgium': 2,
-  'Switzerland': 2, 'Austria': 2, 'Poland': 2, 'Greece': 2, 'Ukraine': 2,
-  'Morocco': 2, 'Algeria': 2, 'Libya': 2,
-  'Madagascar': 2, 'Colombia': 2, 'Venezuela': 2, 'Peru': 2,
-  'Chile': 2, 'Cuba': 2, 'New Zealand': 2, 'South Korea': 2,
-  'North Korea': 2, 'Vietnam': 2, 'Thailand': 2, 'Philippines': 2,
-  'Pakistan': 2, 'Iran': 2, 'Israel': 2, 'Mongolia': 2,
+export function levelOf(name) {
+  return NAME_TO_LEVEL.get(name) || 0;
+}
 
-  // ---- Tier 3: medium ----
-  // Big names in confusable clusters, demoted from Easy:
-  'Kazakhstan': 3, 'Afghanistan': 3, 'Iraq': 3, 'Ethiopia': 3, 'Kenya': 3,
-  'Nigeria': 3,
-  'Czechia': 3, 'Slovakia': 3, 'Hungary': 3, 'Romania': 3, 'Bulgaria': 3,
-  'Croatia': 3, 'Serbia': 3, 'Belarus': 3, 'Lithuania': 3, 'Latvia': 3,
-  'Estonia': 3, 'Tunisia': 3, 'Mali': 3, 'Niger': 3, 'Chad': 3,
-  'Sudan': 3, 'Somalia': 3, 'Tanzania': 3, 'Mozambique': 3, 'Angola': 3,
-  'Namibia': 3, 'Botswana': 3, 'Zimbabwe': 3, 'Zambia': 3, 'Ghana': 3,
-  'Senegal': 3, 'Cameroon': 3, 'Dem. Rep. Congo': 3, 'Bolivia': 3,
-  'Ecuador': 3, 'Paraguay': 3, 'Uruguay': 3, 'Panama': 3,
-  'Costa Rica': 3, 'Guatemala': 3, 'Honduras': 3, 'Nicaragua': 3,
-  'Dominican Rep.': 3, 'Haiti': 3, 'Jamaica': 3, 'Malaysia': 3,
-  'Myanmar': 3, 'Bangladesh': 3, 'Sri Lanka': 3, 'Nepal': 3,
-  'Cambodia': 3, 'Laos': 3, 'Syria': 3, 'Jordan': 3, 'Yemen': 3,
-  'Oman': 3, 'United Arab Emirates': 3, 'Qatar': 3, 'Kuwait': 3,
-  'Uzbekistan': 3, 'Azerbaijan': 3, 'Georgia': 3, 'Armenia': 3,
-
-  // ---- Tier 4: hard ----
-  'Benin': 4, 'Togo': 4, 'Burkina Faso': 4, "Côte d'Ivoire": 4,
-  'Guinea': 4, 'Sierra Leone': 4, 'Liberia': 4, 'Mauritania': 4,
-  'Gabon': 4, 'Congo': 4, 'Central African Rep.': 4, 'S. Sudan': 4,
-  'Eritrea': 4, 'Djibouti': 4, 'Uganda': 4, 'Rwanda': 4, 'Burundi': 4,
-  'Malawi': 4, 'Lesotho': 4, 'eSwatini': 4, 'Eq. Guinea': 4,
-  'Guinea-Bissau': 4, 'Gambia': 4, 'Albania': 4, 'Bosnia and Herz.': 4,
-  'Macedonia': 4, 'Montenegro': 4, 'Slovenia': 4, 'Moldova': 4,
-  'Kosovo': 4, 'Cyprus': 4, 'Malta': 4, 'Luxembourg': 4,
-  'Kyrgyzstan': 4, 'Tajikistan': 4, 'Turkmenistan': 4, 'Bhutan': 4,
-  'Taiwan': 4, 'Brunei': 4, 'Timor-Leste': 4, 'Papua New Guinea': 4,
-  'Singapore': 4, 'Lebanon': 4, 'Bahrain': 4, 'Belize': 4,
-  'El Salvador': 4, 'Guyana': 4, 'Suriname': 4,
-  'Trinidad and Tobago': 4, 'Bahamas': 4, 'Fiji': 4,
-
-  // ---- Tier 5: expert — microstates and remote islands ----
-  'Andorra': 5, 'Liechtenstein': 5, 'Monaco': 5, 'San Marino': 5,
-  'Vatican': 5, 'Comoros': 5, 'Cabo Verde': 5,
-  'São Tomé and Principe': 5, 'Seychelles': 5, 'Mauritius': 5,
-  'Maldives': 5, 'Solomon Is.': 5, 'Vanuatu': 5, 'Samoa': 5,
-  'Tonga': 5, 'Kiribati': 5, 'Micronesia': 5, 'Marshall Is.': 5,
-  'Palau': 5, 'Nauru': 5, 'St. Kitts and Nevis': 5,
-  'Antigua and Barb.': 5, 'Dominica': 5, 'Saint Lucia': 5,
-  'St. Vin. and Gren.': 5, 'Grenada': 5, 'Barbados': 5,
-  'W. Sahara': 5, 'Palestine': 5,
-};
+export function levelTitle(lvl) {
+  return getLang() === 'fr' ? lvl.fr : lvl.en;
+}
 
 // Friendlier display names for abbreviated dataset names.
 const DISPLAY = {
@@ -187,8 +216,4 @@ export function displayName(name) {
   return DISPLAY[name] || name;
 }
 
-export const PLAYABLE = Object.keys(TIERS);
-
-export function tierOf(name) {
-  return TIERS[name] || 0;
-}
+export const PLAYABLE = [...NAME_TO_LEVEL.keys()];

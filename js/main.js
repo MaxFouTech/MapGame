@@ -1,6 +1,11 @@
 // Screen management and game loop.
+// Three play modes:
+//  - series:   one full pass over a level's countries -> star rating
+//  - training: redo the errors of a series (each must be found twice)
+//  - review:   endless adaptive session driven by the spaced-repetition
+//              scheduler over all countries
 
-import { TIERS, TIER_ICONS, PLAYABLE, displayName, tierOf } from './countries.js';
+import { LEVELS, PLAYABLE, displayName, levelOf, levelTitle } from './countries.js';
 import * as store from './storage.js';
 import * as sched from './scheduler.js';
 import { WorldMap } from './map.js';
@@ -9,23 +14,35 @@ import { t, setLang, getLang } from './i18n.js';
 const d3 = window.d3;
 const $ = id => document.getElementById(id);
 
-const BASE_POINTS = [0, 50, 70, 90, 110, 140]; // by tier
+const BASE_POINTS = [0, 50, 60, 70, 80, 90, 105, 120, 140]; // by level 1..8
 const SPEED_WINDOW = 15;                        // seconds for full speed bonus decay
+const TRAIN_GOAL = 2;                           // finds needed to clear a trained country
 const state = {
   playerName: null,
   player: null,
   map: null,
   world: null,
-  // per-session:
   session: null,
   target: null,
   askedAt: 0,
   recentAsked: [],
   forcedQueue: [],
+  lastSeries: null, // { levelN, missed } for summary buttons
   phase: 'idle', // 'asking' | 'feedback'
 };
 
-const tierName = tier => t('tier_' + tier);
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function playerLevels() {
+  return state.player.levels || (state.player.levels = {});
+}
 
 // ---------- i18n ----------
 
@@ -42,8 +59,6 @@ function applyStaticI18n() {
   $('btn-dontknow').textContent = t('showMe');
   $('btn-end').textContent = t('endSession');
   $('btn-next').textContent = t('next');
-  $('btn-again').textContent = t('trainAgain');
-  $('btn-summary-menu').textContent = t('menuBtn');
   $('zoom-hint').textContent = t('clickHint');
   document.documentElement.lang = getLang();
   document.querySelectorAll('.lang-switch button').forEach(b =>
@@ -54,10 +69,10 @@ function switchLang(l) {
   setLang(l);
   store.setStoredLang(l);
   applyStaticI18n();
-  // Re-render whatever dynamic screen is visible.
   renderPlayers();
   if (state.player) renderMenu();
   if ($('screen-stats').classList.contains('active')) renderStats();
+  if ($('screen-countries').classList.contains('active')) renderCountryList();
 }
 
 document.querySelectorAll('.lang-switch button').forEach(b =>
@@ -113,49 +128,83 @@ $('new-player-name').addEventListener('keydown', e => {
 
 // ---------- menu screen ----------
 
+function starsHtml(n, cls = '') {
+  return `<span class="stars ${cls}">` +
+    [1, 2, 3].map(i => `<span class="${i <= n ? 'star on' : 'star'}">★</span>`).join('') +
+    '</span>';
+}
+
 function renderMenu() {
   $('menu-player-name').textContent = state.playerName;
-  const chips = $('tier-chips');
-  chips.innerHTML = '';
-  const selected = new Set(state.player.settings.tiers);
-  for (let tier = 1; tier <= 5; tier++) {
-    const count = PLAYABLE.filter(n => TIERS[n] === tier).length;
-    const chip = document.createElement('button');
-    chip.className = 'tier-chip' + (selected.has(tier) ? ' on' : '');
-    chip.innerHTML = `${TIER_ICONS[tier - 1]} ${tierName(tier)} <small>${count}</small>`;
-    chip.addEventListener('click', () => {
-      if (selected.has(tier)) { if (selected.size > 1) selected.delete(tier); }
-      else selected.add(tier);
-      state.player.settings.tiers = [...selected].sort();
-      store.persist();
-      renderMenu();
-    });
-    chips.appendChild(chip);
-  }
-
-  // Per-tier mastery bars.
-  const prog = $('menu-progress');
-  prog.innerHTML = '';
-  for (let tier = 1; tier <= 5; tier++) {
-    const names = PLAYABLE.filter(n => TIERS[n] === tier);
-    const known = names.filter(n => ['known', 'mastered'].includes(
+  const grid = $('level-grid');
+  grid.innerHTML = '';
+  const lv = playerLevels();
+  for (const lvl of LEVELS) {
+    const rec = lv[lvl.n] || {};
+    const known = lvl.countries.filter(n => ['known', 'mastered'].includes(
       sched.statusOf(state.player.records[n]))).length;
-    const pct = Math.round(100 * known / names.length);
-    const row = document.createElement('div');
-    row.className = 'prog-row';
-    row.innerHTML = `<span class="prog-label">${tierName(tier)}</span>
-      <div class="prog-bar"><div class="prog-fill t${tier}" style="width:${pct}%"></div></div>
-      <span class="prog-pct">${known}/${names.length}</span>`;
-    prog.appendChild(row);
+    const pct = Math.round(100 * known / lvl.countries.length);
+    const card = document.createElement('button');
+    card.className = 'level-card';
+    card.innerHTML = `
+      <span class="level-num l${lvl.n}">${lvl.n}</span>
+      <span class="level-body">
+        <span class="level-title">${escapeHtml(levelTitle(lvl))}</span>
+        <span class="level-meta">${t('countriesCount', { n: lvl.countries.length })} · ${t('knownOf', { k: known, n: lvl.countries.length })}</span>
+        <span class="level-foot">${starsHtml(rec.bestStars || 0)}
+          <span class="prog-bar mini"><span class="prog-fill l${lvl.n}" style="width:${pct}%"></span></span>
+        </span>
+      </span>`;
+    card.addEventListener('click', () => startSeries(lvl.n));
+    grid.appendChild(card);
   }
 }
 
 $('btn-switch-player').addEventListener('click', () => { renderPlayers(); show('screen-players'); });
-$('btn-start').addEventListener('click', startSession);
+$('btn-review').addEventListener('click', startReview);
+$('btn-countries').addEventListener('click', () => { renderCountryList(); show('screen-countries'); });
+$('btn-countries-back').addEventListener('click', () => { renderMenu(); show('screen-menu'); });
 $('btn-stats').addEventListener('click', () => { renderStats(); show('screen-stats'); });
 $('btn-stats-back').addEventListener('click', () => { renderMenu(); show('screen-menu'); });
 
+// ---------- country list screen ----------
+
+function renderCountryList() {
+  const legend = $('country-legend');
+  legend.innerHTML = ['new', 'learning', 'known', 'mastered'].map(st =>
+    `<span class="country-chip ${st}">${t('status_' + st)}</span>`).join('');
+
+  const body = $('country-list-body');
+  body.innerHTML = '';
+  const lv = playerLevels();
+  for (const lvl of LEVELS) {
+    const rec = lv[lvl.n] || {};
+    const sec = document.createElement('div');
+    sec.className = 'country-section';
+    const chips = [...lvl.countries]
+      .map(n => ({ n, d: displayName(n) }))
+      .sort((a, b) => a.d.localeCompare(b.d))
+      .map(({ n, d }) => {
+        const st = sched.statusOf(state.player.records[n]);
+        return `<span class="country-chip ${st}">${escapeHtml(d)}</span>`;
+      }).join('');
+    sec.innerHTML = `
+      <div class="country-section-head">
+        <span class="level-num l${lvl.n}">${lvl.n}</span>
+        <span class="country-section-title">${escapeHtml(levelTitle(lvl))}
+          <small>${t('countriesCount', { n: lvl.countries.length })}</small></span>
+        ${starsHtml(rec.bestStars || 0)}
+      </div>
+      <div class="country-chips">${chips}</div>`;
+    body.appendChild(sec);
+  }
+}
+
 // ---------- stats screen ----------
+
+function levelBadge(n) {
+  return `<span class="badge l${n}">${t('levelShort', { n })}</span>`;
+}
 
 function renderStats() {
   const p = state.player;
@@ -183,7 +232,7 @@ function renderStats() {
     ? `<ol class="weak-list">${rows.map(r => {
         const acc = Math.round(100 * sched.accuracy(r.rec));
         return `<li><b>${escapeHtml(displayName(r.n))}</b>
-          <span class="badge t${tierOf(r.n)}">${tierName(tierOf(r.n))}</span>
+          ${levelBadge(levelOf(r.n))}
           <span class="weak-acc">${t('weakAcc', { p: acc, c: r.rec.c, a: r.rec.a })}</span></li>`;
       }).join('')}</ol>`
     : `<p class="hint">${t('playHint')}</p>`;
@@ -191,7 +240,7 @@ function renderStats() {
   // Full table.
   const all = PLAYABLE
     .map(n => ({ n, rec: p.records[n] }))
-    .sort((a, b) => tierOf(a.n) - tierOf(b.n) || displayName(a.n).localeCompare(displayName(b.n)));
+    .sort((a, b) => levelOf(a.n) - levelOf(b.n) || displayName(a.n).localeCompare(displayName(b.n)));
   $('stats-table').innerHTML = `<table class="stats-table">
     <thead><tr><th>${t('th_country')}</th><th>${t('th_level')}</th><th>${t('th_status')}</th><th>${t('th_accuracy')}</th></tr></thead>
     <tbody>${all.map(({ n, rec }) => {
@@ -199,7 +248,7 @@ function renderStats() {
       const acc = sched.accuracy(rec);
       return `<tr>
         <td>${escapeHtml(displayName(n))}</td>
-        <td><span class="badge t${tierOf(n)}">${tierName(tierOf(n))}</span></td>
+        <td>${levelBadge(levelOf(n))}</td>
         <td><span class="status ${st}">${t('status_' + st)}</span></td>
         <td>${acc == null ? '—' : t('accCell', { p: Math.round(acc * 100), c: rec.c, a: rec.a })}</td>
       </tr>`;
@@ -244,38 +293,76 @@ async function ensureMap() {
   });
 }
 
-function candidates() {
-  const tiers = new Set(state.player.settings.tiers);
-  return PLAYABLE.filter(n => tiers.has(TIERS[n]));
+function newSession(mode, extra = {}) {
+  return { mode, score: 0, asked: 0, correct: 0, streak: 0, bestStreak: 0,
+    misses: [], ...extra };
 }
 
-async function startSession() {
+async function startSeries(levelN) {
+  const lvl = LEVELS.find(l => l.n === levelN);
   show('screen-game');
   await ensureMap();
   state.map.refit();
-  state.session = { score: 0, asked: 0, correct: 0, streak: 0, bestStreak: 0, misses: [] };
-  state.recentAsked = [];
-  state.forcedQueue = [];
-  updateHud();
+  state.session = newSession('series', {
+    levelN, queue: shuffle(lvl.countries), total: lvl.countries.length,
+  });
   nextQuestion();
 }
 
+async function startTraining(levelN, missed) {
+  show('screen-game');
+  await ensureMap();
+  state.map.refit();
+  const needs = {};
+  for (const n of missed) needs[n] = TRAIN_GOAL;
+  state.session = newSession('training', {
+    levelN, queue: shuffle(missed), needs,
+  });
+  nextQuestion();
+}
+
+async function startReview() {
+  show('screen-game');
+  await ensureMap();
+  state.map.refit();
+  state.session = newSession('review');
+  state.recentAsked = [];
+  state.forcedQueue = [];
+  nextQuestion();
+}
+
+// Insert back into the queue a few positions ahead (not immediately next).
+function requeue(queue, name, minAhead = 2) {
+  const pos = Math.min(queue.length, minAhead + Math.floor(Math.random() * 3));
+  queue.splice(pos, 0, name);
+}
+
 function nextQuestion() {
+  const s = state.session;
+  if (!s) return;
+
+  if (s.mode === 'series' && s.queue.length === 0) return endSeries();
+  if (s.mode === 'training' && s.queue.length === 0) return endTraining();
+
   state.phase = 'asking';
   $('feedback').classList.add('hidden');
   state.map.clearHighlights();
   state.map.enabled = true;
   state.map.zoomReset();
 
-  const name = sched.pickTarget(state.player, candidates(), state.recentAsked, state.forcedQueue);
+  let name;
+  if (s.mode === 'review') {
+    name = sched.pickTarget(state.player, PLAYABLE, state.recentAsked, state.forcedQueue);
+    state.recentAsked.push(name);
+  } else {
+    name = s.queue.shift();
+  }
   state.target = name;
-  state.recentAsked.push(name);
   state.askedAt = performance.now();
 
-  const tier = tierOf(name);
+  const lvlN = levelOf(name);
   $('prompt-country').textContent = displayName(name);
-  $('prompt-tier').innerHTML =
-    `<span class="badge t${tier}">${tierName(tier)}</span>`;
+  $('prompt-tier').innerHTML = `<span class="badge l${lvlN}">${t('levelShort', { n: lvlN })}</span>`;
   $('zoom-hint').classList.remove('hidden');
   updateHud();
 }
@@ -300,8 +387,8 @@ function onValidate(feature) {
     s.correct++;
     s.streak++;
     s.bestStreak = Math.max(s.bestStreak, s.streak);
-    const tier = tierOf(target);
-    const base = BASE_POINTS[tier];
+    if (s.mode === 'training' && --s.needs[target] > 0) requeue(s.queue, target, 2);
+    const base = BASE_POINTS[levelOf(target)];
     const speedBonus = Math.round(40 * Math.max(0, SPEED_WINDOW - elapsed) / SPEED_WINDOW);
     const mult = 1 + 0.1 * Math.min(s.streak - 1, 10);
     const pts = Math.round((base + speedBonus) * mult);
@@ -312,20 +399,35 @@ function onValidate(feature) {
     updateHud();
     setTimeout(nextQuestion, 700);
   } else {
-    const nearMiss = state.map.isNeighbor(clicked, target);
-    if (nearMiss) s.score += 10;
-    s.streak = 0;
-    s.misses.push(target);
-    // Re-ask soon so the correction sticks.
+    handleMiss(clicked, target);
+  }
+}
+
+function handleMiss(clicked, target) {
+  const s = state.session;
+  const nearMiss = clicked != null && state.map.isNeighbor(clicked, target);
+  if (nearMiss) s.score += 10;
+  s.streak = 0;
+  s.misses.push(target);
+  if (s.mode === 'training') {
+    s.needs[target] = TRAIN_GOAL;
+    requeue(s.queue, target, 2);
+  }
+  if (s.mode === 'review') {
     state.forcedQueue.push({ name: target, dueQ: state.player.qIndex + 2 + Math.floor(Math.random() * 3) });
+  }
+  if (clicked != null) {
     state.map.showCorrection(clicked, target);
     showFeedback(
       `${nearMiss ? t('soClose') : t('notQuite')} ` +
       t('youClicked', { guess: escapeHtml(displayName(clicked)), target: escapeHtml(displayName(target)) }) +
       (nearMiss ? ` <span class="consolation">${t('nearMissBonus')}</span>` : ''));
-    store.persist();
-    updateHud();
+  } else {
+    state.map.revealTarget(target);
+    showFeedback(t('revealMsg', { target: escapeHtml(displayName(target)) }));
   }
+  store.persist();
+  updateHud();
 }
 
 function giveUp() {
@@ -334,16 +436,9 @@ function giveUp() {
   state.map.enabled = false;
   $('zoom-hint').classList.add('hidden');
   const s = state.session;
-  const target = state.target;
   s.asked++;
-  s.streak = 0;
-  s.misses.push(target);
-  sched.recordResult(state.player, target, false);
-  state.forcedQueue.push({ name: target, dueQ: state.player.qIndex + 2 + Math.floor(Math.random() * 3) });
-  state.map.revealTarget(target);
-  showFeedback(t('revealMsg', { target: escapeHtml(displayName(target)) }));
-  store.persist();
-  updateHud();
+  sched.recordResult(state.player, state.target, false);
+  handleMiss(null, state.target);
 }
 
 function showFeedback(html) {
@@ -367,44 +462,138 @@ function updateHud() {
   $('hud-score').textContent = s.score.toLocaleString();
   $('hud-perfect').innerHTML = s.misses.length === 0 ? t('perfectChip') : '';
   $('hud-streak').innerHTML = s.streak >= 2 ? t('streakRow', { n: s.streak }) : '';
-  $('hud-qcount').textContent = t('correctCount', { c: s.correct, a: s.asked });
+  if (s.mode === 'series') {
+    $('hud-qcount').textContent = t('seriesCount', { i: s.asked, n: s.total, c: s.correct });
+  } else if (s.mode === 'training') {
+    const left = Object.values(s.needs).filter(v => v > 0).length;
+    $('hud-qcount').textContent = t('trainingLeft', { n: left });
+  } else {
+    $('hud-qcount').textContent = t('correctCount', { c: s.correct, a: s.asked });
+  }
 }
 
-function endSession() {
-  const s = state.session;
-  if (!s) return;
+// ---------- session endings ----------
+
+function commonSessionSave(s, { updateLevel = false } = {}) {
   const p = state.player;
-  const perfect = s.asked > 0 && s.misses.length === 0;
   p.totalScore += s.score;
   p.bestStreak = Math.max(p.bestStreak, s.bestStreak);
-  if (perfect && s.asked >= 5) p.perfectRuns = (p.perfectRuns || 0) + 1;
   if (s.asked > 0) {
     p.sessions.push({ ts: Date.now(), score: s.score, asked: s.asked, correct: s.correct, bestStreak: s.bestStreak });
     p.snapshots.push(sched.snapshot(p, PLAYABLE));
   }
+  if (updateLevel) {
+    const lv = playerLevels();
+    const rec = lv[s.levelN] || (lv[s.levelN] = { bestStars: 0, plays: 0 });
+    rec.plays++;
+    rec.bestStars = Math.max(rec.bestStars, s.stars);
+    rec.lastMissed = [...new Set(s.misses)];
+  }
   store.persist();
+}
 
+function starsFor(s) {
+  if (s.misses.length === 0) return 3;
+  const acc = s.correct / s.total;
+  if (acc >= 0.8) return 2;
+  if (acc >= 0.5) return 1;
+  return 0;
+}
+
+function summaryTiles(s) {
   const acc = s.asked ? Math.round(100 * s.correct / s.asked) : 0;
-  const missSet = [...new Set(s.misses)];
-  $('summary-title').textContent = perfect ? t('perfectTitle') : t('sessionComplete');
-  $('summary-body').innerHTML = `
-    <div class="stats-summary">
+  return `<div class="stats-summary">
       <div class="stat-tile"><b>${s.score.toLocaleString()}</b><span>${t('sum_points')}</span></div>
       <div class="stat-tile"><b>${acc}%</b><span>${t('sum_accuracy', { c: s.correct, a: s.asked })}</span></div>
       <div class="stat-tile"><b>${s.bestStreak}</b><span>${t('sum_bestStreak')}</span></div>
-    </div>
-    ${missSet.length ? `<h3>${t('toReview')}</h3><p class="miss-list">${missSet.map(n =>
-      `<span class="badge t${tierOf(n)}">${escapeHtml(displayName(n))}</span>`).join(' ')}</p>`
-      : `<p class="hint">${t('nothingToReview')}</p>`}`;
+    </div>`;
+}
+
+function missBadges(s) {
+  const missSet = [...new Set(s.misses)];
+  return missSet.length
+    ? `<h3>${t('toReview')}</h3><p class="miss-list">${missSet.map(n =>
+        `<span class="badge l${levelOf(n)}">${escapeHtml(displayName(n))}</span>`).join(' ')}</p>`
+    : `<p class="hint">${t('nothingToReview')}</p>`;
+}
+
+function openSummary(s, { title, stars = null, subtitle = '' }) {
+  $('summary-title').textContent = title;
+  const starsEl = $('summary-stars');
+  if (stars == null) {
+    starsEl.classList.add('hidden');
+  } else {
+    starsEl.classList.remove('hidden');
+    starsEl.innerHTML = starsHtml(stars, 'big') +
+      `<div class="hint">${t('starsHint')}</div>`;
+  }
+  $('summary-body').innerHTML = subtitle + summaryTiles(s) + missBadges(s);
+
+  const missed = [...new Set(s.misses)];
+  const trainBtn = $('btn-training');
+  if (missed.length && s.levelN) {
+    trainBtn.classList.remove('hidden');
+    trainBtn.textContent = t('trainBtn', { n: missed.length });
+    state.lastSeries = { levelN: s.levelN, missed };
+  } else {
+    trainBtn.classList.add('hidden');
+    if (s.levelN) state.lastSeries = { levelN: s.levelN, missed: [] };
+  }
+  $('btn-again').textContent = s.mode === 'review' ? t('reviewAgainBtn') : t('replayBtn');
+  $('btn-again').dataset.mode = s.mode === 'review' ? 'review' : 'series';
+  $('btn-again').dataset.level = s.levelN || '';
+  $('btn-summary-menu').textContent = t('menuBtn');
   state.session = null;
   show('screen-summary');
 }
 
+function endSeries() {
+  const s = state.session;
+  s.stars = starsFor(s);
+  if (s.stars === 3) state.player.perfectRuns = (state.player.perfectRuns || 0) + 1;
+  commonSessionSave(s, { updateLevel: true });
+  const lvl = LEVELS.find(l => l.n === s.levelN);
+  openSummary(s, {
+    title: s.stars === 3 ? t('perfectTitle') : t('seriesDone'),
+    stars: s.stars,
+    subtitle: `<p class="summary-level">${t('levelLabel', { n: s.levelN })} · ${escapeHtml(levelTitle(lvl))}</p>`,
+  });
+}
+
+function endTraining() {
+  const s = state.session;
+  commonSessionSave(s);
+  openSummary(s, {
+    title: t('trainingDone'),
+    subtitle: `<p class="hint">${t('trainingDoneHint')}</p>`,
+  });
+}
+
+// "End session" button: normal ending for review, early stop for series/training.
+function endSessionEarly() {
+  const s = state.session;
+  if (!s) return;
+  if (s.mode === 'review') {
+    commonSessionSave(s);
+    openSummary(s, { title: t('sessionComplete') });
+  } else {
+    commonSessionSave(s);
+    openSummary(s, { title: t('endedEarly') });
+  }
+}
+
 $('btn-world').addEventListener('click', () => state.map?.zoomReset());
 $('btn-dontknow').addEventListener('click', giveUp);
-$('btn-end').addEventListener('click', endSession);
+$('btn-end').addEventListener('click', endSessionEarly);
 $('btn-next').addEventListener('click', nextQuestion);
-$('btn-again').addEventListener('click', startSession);
+$('btn-training').addEventListener('click', () => {
+  if (state.lastSeries?.missed.length) startTraining(state.lastSeries.levelN, state.lastSeries.missed);
+});
+$('btn-again').addEventListener('click', e => {
+  const mode = e.currentTarget.dataset.mode;
+  if (mode === 'review') startReview();
+  else startSeries(Number(e.currentTarget.dataset.level) || state.lastSeries?.levelN || 1);
+});
 $('btn-summary-menu').addEventListener('click', () => { renderMenu(); show('screen-menu'); });
 
 document.addEventListener('keydown', e => {

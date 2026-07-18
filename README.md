@@ -21,18 +21,25 @@ because the app fetches the map data.)
 1. **Pick or create a player** — progress is saved per player in the browser
    (localStorage). The interface is available in **English and French**
    (FR/EN toggle, country names included).
-2. **Choose difficulty levels** — from *Very easy* (USA, Brazil, France…) to
-   *Expert* (microstates and remote islands). You can combine several.
+2. **Pick a level** — 8 themed levels of 20-30 countries, ordered by
+   difficulty (from *World Giants* to *Microstates & Ends of the Earth*).
+   A series asks every country of the level once, in random order.
 3. **Find the country**: click it on the map. You manage the view yourself —
    scroll to zoom, drag to pan. Every click on a country is an answer.
 4. **Mistakes teach**: on a wrong answer the map zooms out to show both
    countries and draws an arrow from your guess to the right one.
    A near miss (you clicked a neighbour) earns a small consolation.
-5. **Not sure?** Use *Show me* — it reveals the country (counts as a miss)
-   and schedules it to come back soon.
-6. **The goal is a perfect run**: a session with zero mistakes. The HUD
-   shows your flawless status live, and perfect sessions (5+ questions)
-   are counted in your stats.
+5. **Not sure?** Use *Show me* — it reveals the country (counts as a miss).
+6. **Stars**: each series ends with a rating — ★★★ for a perfect run,
+   ★★ for ≥80% accuracy, ★ for ≥50%. Best stars are shown on the level
+   cards. If you miss countries, a **training mode** replays just your
+   errors until each has been found twice — then retry the level for 3
+   stars.
+7. **Smart review** — an endless adaptive mode driven by the
+   spaced-repetition scheduler, prioritising your weakest and overdue
+   countries across all levels.
+8. **All countries** — a browsable list of every country grouped by level,
+   colored by your knowledge status.
 
 ## Scoring
 

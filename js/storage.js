@@ -41,7 +41,7 @@ export function createPlayer(name) {
       records: {},             // countryName -> {a, c, box, lastQ, streak}
       sessions: [],            // {ts, score, asked, correct, bestStreak}
       snapshots: [],           // {ts, known, mastered, seen}
-      settings: { tiers: [1, 2] },
+      levels: {},              // levelN -> {bestStars, plays, lastMissed}
     };
     save();
   }

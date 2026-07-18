@@ -43,14 +43,26 @@
 
     <h2 data-i18n="chooseLevels"></h2>
     <p class="hint" data-i18n="levelsHint"></p>
-    <div id="tier-chips" class="tier-chips"></div>
-
-    <div id="menu-progress" class="menu-progress"></div>
+    <div id="level-grid" class="level-grid"></div>
 
     <div class="menu-actions">
-      <button id="btn-start" class="btn primary big" data-i18n="start"></button>
+      <button id="btn-review" class="btn primary" data-i18n="reviewBtn"></button>
+      <button id="btn-countries" class="btn ghost" data-i18n="countryListBtn"></button>
       <button id="btn-stats" class="btn ghost" data-i18n="myProgress"></button>
     </div>
+  </div>
+</div>
+
+<!-- ===== Country list by level ===== -->
+<div id="screen-countries" class="screen">
+  <div class="panel wide scroll">
+    <div class="menu-head">
+      <h2 data-i18n="countryListBtn"></h2>
+      <button id="btn-countries-back" class="btn ghost" data-i18n="back"></button>
+    </div>
+    <p class="hint" data-i18n="listHint"></p>
+    <div id="country-legend" class="country-legend"></div>
+    <div id="country-list-body"></div>
   </div>
 </div>
 
@@ -110,9 +122,11 @@
 <div id="screen-summary" class="screen">
   <div class="panel">
     <h2 id="summary-title"></h2>
+    <div id="summary-stars" class="summary-stars hidden"></div>
     <div id="summary-body"></div>
-    <div class="menu-actions">
-      <button id="btn-again" class="btn primary big"></button>
+    <div class="menu-actions summary-actions">
+      <button id="btn-training" class="btn primary big hidden"></button>
+      <button id="btn-again" class="btn primary"></button>
       <button id="btn-summary-menu" class="btn ghost"></button>
     </div>
   </div>
