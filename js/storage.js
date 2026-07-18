@@ -63,6 +63,15 @@ export function getLastPlayer() {
   return db.lastPlayer && db.players[db.lastPlayer] ? db.lastPlayer : null;
 }
 
+export function getStoredLang() {
+  return db.lang || null;
+}
+
+export function setStoredLang(l) {
+  db.lang = l;
+  save();
+}
+
 export function persist() {
   save();
 }

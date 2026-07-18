@@ -12,14 +12,11 @@ const PALETTE = [
 const NON_PLAYABLE = '#d9d5cc';
 const OCEAN = '#cfe0ea';
 
-export const ARMED_SCALE = 2.2;   // zoomed in past this -> clicks validate
-const FIRST_CLICK_SCALE = 4.5;    // zoom level after the first click
-
 export class WorldMap {
   constructor(container, world, playableSet, callbacks) {
     this.container = container;
     this.playable = playableSet;
-    this.cb = callbacks; // { onValidate(feature), onArm() }
+    this.cb = callbacks; // { onValidate(feature), labelFor(name) }
     this.enabled = false;
 
     const geo = topojson.feature(world, world.objects.countries);
@@ -50,10 +47,15 @@ export class WorldMap {
       .style('background', OCEAN);
 
     this.projection = d3.geoNaturalEarth1();
-    this.projection.fitExtent(
-      [[8, 8], [this.width - 8, this.height - 8]],
-      { type: 'FeatureCollection', features: this.features });
+    this._fitProjection();
     this.path = d3.geoPath(this.projection);
+
+    // Refit on window resize so the world always fills the available space.
+    this._resizeTimer = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(this._resizeTimer);
+      this._resizeTimer = setTimeout(() => this.refit(), 150);
+    });
 
     this.g = this.svg.append('g');
     this.overlay = this.g.append('g').attr('class', 'overlay-layer');
@@ -84,15 +86,22 @@ export class WorldMap {
         this._scaleOverlay();
       });
     this.svg.call(this.zoom).on('dblclick.zoom', null);
+  }
 
-    // First click on ocean also zooms.
-    this.svg.on('click', (event) => {
-      if (!this.enabled || event.defaultPrevented) return;
-      if (this.k < ARMED_SCALE) {
-        const [x, y] = d3.pointer(event, this.svg.node());
-        this._zoomTo(x, y);
-      }
-    });
+  _fitProjection() {
+    this.projection.fitExtent(
+      [[4, 4], [this.width - 4, this.height - 4]],
+      { type: 'FeatureCollection', features: this.features });
+  }
+
+  refit() {
+    const el = this.container;
+    if (!el.clientWidth || !el.clientHeight) return;
+    this.width = el.clientWidth;
+    this.height = el.clientHeight;
+    this.svg.attr('viewBox', `0 0 ${this.width} ${this.height}`);
+    this._fitProjection();
+    this.countryPaths.attr('d', this.path);
   }
 
   // Greedy graph coloring: countries sharing a border, or with nearby
@@ -131,31 +140,13 @@ export class WorldMap {
     }
   }
 
+  // A click on a country is always an answer — the player manages zoom and
+  // pan themselves (wheel / drag).
   _onCountryClick(event, f) {
     if (!this.enabled) return;
     if (event.defaultPrevented) return; // was a drag
     event.stopPropagation();
-    if (this.k < ARMED_SCALE) {
-      const [x, y] = d3.pointer(event, this.svg.node());
-      this._zoomTo(x, y);
-    } else {
-      this.cb.onValidate(f);
-    }
-  }
-
-  _zoomTo(x, y, scale = FIRST_CLICK_SCALE, dur = 700) {
-    const t = d3.zoomIdentity
-      .translate(this.width / 2, this.height / 2)
-      .scale(scale)
-      .translate(...this._invert(x, y).map(v => -v));
-    this.svg.transition().duration(dur).call(this.zoom.transform, t);
-    this.cb.onArm?.();
-  }
-
-  // Convert screen coords to base (untransformed) map coords.
-  _invert(x, y) {
-    const t = d3.zoomTransform(this.svg.node());
-    return t.invert([x, y]);
+    this.cb.onValidate(f);
   }
 
   zoomReset(dur = 750) {
@@ -259,11 +250,12 @@ export class WorldMap {
   _label(name, kind) {
     const c = this.centroidOf(name);
     if (!c) return;
+    const text = this.cb.labelFor ? this.cb.labelFor(name) : name;
     const g = this.overlay.append('g')
       .attr('class', `map-label ${kind}`)
       .attr('transform', `translate(${c[0]},${c[1]})`);
-    g.append('text').attr('class', 'map-label-halo').text(name);
-    g.append('text').attr('class', 'map-label-text').text(name);
+    g.append('text').attr('class', 'map-label-halo').text(text);
+    g.append('text').attr('class', 'map-label-text').text(text);
     this._scaleOverlay();
   }
 

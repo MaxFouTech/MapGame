@@ -14,13 +14,16 @@
 <!-- ===== Player selection ===== -->
 <div id="screen-players" class="screen active">
   <div class="panel">
+    <div class="lang-switch" id="lang-switch-players">
+      <button data-lang="fr">FR</button><button data-lang="en">EN</button>
+    </div>
     <h1 class="logo">🌍 MapGame</h1>
-    <p class="tagline">Learn where every country is — one click at a time.</p>
+    <p class="tagline" data-i18n="tagline"></p>
     <div id="player-list" class="player-list"></div>
     <!-- Not a <form>: sandboxed embeds (artifact viewers) block form submission. -->
     <div class="new-player">
-      <input id="new-player-name" type="text" maxlength="20" placeholder="New player name…" autocomplete="off">
-      <button id="btn-add-player" type="button" class="btn primary">Add player</button>
+      <input id="new-player-name" type="text" maxlength="20" data-i18n-placeholder="placeholderName" autocomplete="off">
+      <button id="btn-add-player" type="button" class="btn primary" data-i18n="addPlayer"></button>
     </div>
   </div>
 </div>
@@ -30,18 +33,23 @@
   <div class="panel wide">
     <div class="menu-head">
       <h1 class="logo small">🌍 MapGame</h1>
-      <button id="btn-switch-player" class="btn ghost">⇄ <span id="menu-player-name"></span></button>
+      <div class="menu-head-right">
+        <div class="lang-switch" id="lang-switch-menu">
+          <button data-lang="fr">FR</button><button data-lang="en">EN</button>
+        </div>
+        <button id="btn-switch-player" class="btn ghost">⇄ <span id="menu-player-name"></span></button>
+      </div>
     </div>
 
-    <h2>Choose your levels</h2>
-    <p class="hint">Pick one or more difficulty levels to train on.</p>
+    <h2 data-i18n="chooseLevels"></h2>
+    <p class="hint" data-i18n="levelsHint"></p>
     <div id="tier-chips" class="tier-chips"></div>
 
     <div id="menu-progress" class="menu-progress"></div>
 
     <div class="menu-actions">
-      <button id="btn-start" class="btn primary big">▶ Start training</button>
-      <button id="btn-stats" class="btn ghost">📊 My progress</button>
+      <button id="btn-start" class="btn primary big" data-i18n="start"></button>
+      <button id="btn-stats" class="btn ghost" data-i18n="myProgress"></button>
     </div>
   </div>
 </div>
@@ -50,16 +58,16 @@
 <div id="screen-stats" class="screen">
   <div class="panel wide scroll">
     <div class="menu-head">
-      <h2>📊 Progress — <span id="stats-player-name"></span></h2>
-      <button id="btn-stats-back" class="btn ghost">← Back</button>
+      <h2><span data-i18n="progressTitle"></span><span id="stats-player-name"></span></h2>
+      <button id="btn-stats-back" class="btn ghost" data-i18n="back"></button>
     </div>
     <div id="stats-summary" class="stats-summary"></div>
-    <h3>Knowledge over time</h3>
+    <h3 data-i18n="knowledgeOverTime"></h3>
     <div id="stats-evolution" class="stats-evolution"></div>
-    <h3>Countries to reinforce</h3>
-    <p class="hint">Sorted by priority — these will show up more often in training.</p>
+    <h3 data-i18n="countriesToReinforce"></h3>
+    <p class="hint" data-i18n="weakHint"></p>
     <div id="stats-weakest"></div>
-    <h3>All countries</h3>
+    <h3 data-i18n="allCountries"></h3>
     <div id="stats-table"></div>
   </div>
 </div>
@@ -70,28 +78,29 @@
 
   <div class="hud hud-top">
     <div class="hud-card prompt-card">
-      <div class="prompt-label" id="prompt-label">Find</div>
+      <div class="prompt-label" id="prompt-label"></div>
       <div class="prompt-country" id="prompt-country">—</div>
       <div class="prompt-tier" id="prompt-tier"></div>
     </div>
     <div class="hud-card score-card">
-      <div class="score-row"><span class="score-num" id="hud-score">0</span><span class="score-unit">pts</span></div>
+      <div class="score-row"><span class="score-num" id="hud-score">0</span><span class="score-unit" id="hud-pts">pts</span></div>
+      <div class="perfect-row" id="hud-perfect"></div>
       <div class="streak-row" id="hud-streak"></div>
       <div class="qcount-row" id="hud-qcount"></div>
     </div>
   </div>
 
   <div class="hud hud-bottom">
-    <button id="btn-world" class="btn hudbtn" title="Zoom back to world view">🌐 World view</button>
-    <button id="btn-dontknow" class="btn hudbtn" title="Reveal the country (counts as a miss)">🤔 Show me</button>
-    <button id="btn-end" class="btn hudbtn danger" title="End the session">■ End session</button>
+    <button id="btn-world" class="btn hudbtn"></button>
+    <button id="btn-dontknow" class="btn hudbtn"></button>
+    <button id="btn-end" class="btn hudbtn danger"></button>
   </div>
 
-  <div id="zoom-hint" class="zoom-hint hidden">Click anywhere to zoom in, then click the country</div>
+  <div id="zoom-hint" class="zoom-hint hidden"></div>
 
   <div id="feedback" class="feedback hidden">
     <div id="feedback-text"></div>
-    <button id="btn-next" class="btn primary">Next ⏎</button>
+    <button id="btn-next" class="btn primary"></button>
   </div>
 
   <div id="points-popup" class="points-popup hidden"></div>
@@ -100,11 +109,11 @@
 <!-- ===== Session summary ===== -->
 <div id="screen-summary" class="screen">
   <div class="panel">
-    <h2>Session complete 🎉</h2>
+    <h2 id="summary-title"></h2>
     <div id="summary-body"></div>
     <div class="menu-actions">
-      <button id="btn-again" class="btn primary big">▶ Train again</button>
-      <button id="btn-summary-menu" class="btn ghost">Menu</button>
+      <button id="btn-again" class="btn primary big"></button>
+      <button id="btn-summary-menu" class="btn ghost"></button>
     </div>
   </div>
 </div>

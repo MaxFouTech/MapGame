@@ -19,17 +19,20 @@ because the app fetches the map data.)
 ## How to play
 
 1. **Pick or create a player** — progress is saved per player in the browser
-   (localStorage).
+   (localStorage). The interface is available in **English and French**
+   (FR/EN toggle, country names included).
 2. **Choose difficulty levels** — from *Very easy* (USA, Brazil, France…) to
    *Expert* (microstates and remote islands). You can combine several.
-3. **Find the country**: the first click zooms into the zone you clicked.
-   You can then pan and zoom freely — the next click on a country is your
-   answer.
+3. **Find the country**: click it on the map. You manage the view yourself —
+   scroll to zoom, drag to pan. Every click on a country is an answer.
 4. **Mistakes teach**: on a wrong answer the map zooms out to show both
    countries and draws an arrow from your guess to the right one.
    A near miss (you clicked a neighbour) earns a small consolation.
 5. **Not sure?** Use *Show me* — it reveals the country (counts as a miss)
    and schedules it to come back soon.
+6. **The goal is a perfect run**: a session with zero mistakes. The HUD
+   shows your flawless status live, and perfect sessions (5+ questions)
+   are counted in your stats.
 
 ## Scoring
 
@@ -42,7 +45,9 @@ because the app fetches the map data.)
 Every answer feeds a Leitner-style spaced-repetition system:
 
 - Each country sits in a box 0–5. Correct answers promote it; a miss sends
-  it back to box 0.
+  it back to box 0. From box 0 a correct answer jumps two boxes, so two
+  consecutive finds are enough to validate a country ("known") — including
+  after a miss.
 - Spacing is measured in *questions asked* (not wall-clock time), so it works
   within a session and across sessions.
 - Question selection is weighted: overdue and frequently-missed countries are

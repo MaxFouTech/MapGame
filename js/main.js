@@ -1,15 +1,16 @@
 // Screen management and game loop.
 
-import { TIERS, TIER_NAMES, TIER_ICONS, PLAYABLE, displayName, tierOf } from './countries.js';
+import { TIERS, TIER_ICONS, PLAYABLE, displayName, tierOf } from './countries.js';
 import * as store from './storage.js';
 import * as sched from './scheduler.js';
-import { WorldMap, ARMED_SCALE } from './map.js';
+import { WorldMap } from './map.js';
+import { t, setLang, getLang } from './i18n.js';
 
 const d3 = window.d3;
 const $ = id => document.getElementById(id);
 
 const BASE_POINTS = [0, 50, 70, 90, 110, 140]; // by tier
-const SPEED_WINDOW = 12;                        // seconds for full speed bonus decay
+const SPEED_WINDOW = 15;                        // seconds for full speed bonus decay
 const state = {
   playerName: null,
   player: null,
@@ -23,6 +24,44 @@ const state = {
   forcedQueue: [],
   phase: 'idle', // 'asking' | 'feedback'
 };
+
+const tierName = tier => t('tier_' + tier);
+
+// ---------- i18n ----------
+
+function applyStaticI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t(el.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.placeholder = t(el.dataset.i18nPlaceholder);
+  });
+  $('prompt-label').textContent = t('find');
+  $('hud-pts').textContent = t('pts');
+  $('btn-world').textContent = t('worldView');
+  $('btn-dontknow').textContent = t('showMe');
+  $('btn-end').textContent = t('endSession');
+  $('btn-next').textContent = t('next');
+  $('btn-again').textContent = t('trainAgain');
+  $('btn-summary-menu').textContent = t('menuBtn');
+  $('zoom-hint').textContent = t('clickHint');
+  document.documentElement.lang = getLang();
+  document.querySelectorAll('.lang-switch button').forEach(b =>
+    b.classList.toggle('on', b.dataset.lang === getLang()));
+}
+
+function switchLang(l) {
+  setLang(l);
+  store.setStoredLang(l);
+  applyStaticI18n();
+  // Re-render whatever dynamic screen is visible.
+  renderPlayers();
+  if (state.player) renderMenu();
+  if ($('screen-stats').classList.contains('active')) renderStats();
+}
+
+document.querySelectorAll('.lang-switch button').forEach(b =>
+  b.addEventListener('click', () => switchLang(b.dataset.lang)));
 
 // ---------- screens ----------
 
@@ -38,7 +77,7 @@ function renderPlayers() {
   list.innerHTML = '';
   const players = store.listPlayers();
   if (!players.length) {
-    list.innerHTML = '<p class="hint">No players yet — create one below.</p>';
+    list.innerHTML = `<p class="hint">${t('noPlayers')}</p>`;
   }
   for (const name of players) {
     const p = store.getPlayer(name);
@@ -46,7 +85,7 @@ function renderPlayers() {
     const row = document.createElement('button');
     row.className = 'player-row';
     row.innerHTML = `<span class="player-row-name">${escapeHtml(name)}</span>
-      <span class="player-row-meta">${snap.known}/${PLAYABLE.length} known · ${p.totalScore.toLocaleString()} pts</span>`;
+      <span class="player-row-meta">${snap.known}/${PLAYABLE.length} ${t('known')} · ${p.totalScore.toLocaleString()} pts</span>`;
     row.addEventListener('click', () => selectPlayer(name));
     list.appendChild(row);
   }
@@ -79,12 +118,11 @@ function renderMenu() {
   const chips = $('tier-chips');
   chips.innerHTML = '';
   const selected = new Set(state.player.settings.tiers);
-  TIER_NAMES.forEach((label, i) => {
-    const tier = i + 1;
+  for (let tier = 1; tier <= 5; tier++) {
     const count = PLAYABLE.filter(n => TIERS[n] === tier).length;
     const chip = document.createElement('button');
     chip.className = 'tier-chip' + (selected.has(tier) ? ' on' : '');
-    chip.innerHTML = `${TIER_ICONS[i]} ${label} <small>${count}</small>`;
+    chip.innerHTML = `${TIER_ICONS[tier - 1]} ${tierName(tier)} <small>${count}</small>`;
     chip.addEventListener('click', () => {
       if (selected.has(tier)) { if (selected.size > 1) selected.delete(tier); }
       else selected.add(tier);
@@ -93,24 +131,23 @@ function renderMenu() {
       renderMenu();
     });
     chips.appendChild(chip);
-  });
+  }
 
   // Per-tier mastery bars.
   const prog = $('menu-progress');
   prog.innerHTML = '';
-  TIER_NAMES.forEach((label, i) => {
-    const tier = i + 1;
+  for (let tier = 1; tier <= 5; tier++) {
     const names = PLAYABLE.filter(n => TIERS[n] === tier);
     const known = names.filter(n => ['known', 'mastered'].includes(
       sched.statusOf(state.player.records[n]))).length;
     const pct = Math.round(100 * known / names.length);
     const row = document.createElement('div');
     row.className = 'prog-row';
-    row.innerHTML = `<span class="prog-label">${label}</span>
+    row.innerHTML = `<span class="prog-label">${tierName(tier)}</span>
       <div class="prog-bar"><div class="prog-fill t${tier}" style="width:${pct}%"></div></div>
       <span class="prog-pct">${known}/${names.length}</span>`;
     prog.appendChild(row);
-  });
+  }
 }
 
 $('btn-switch-player').addEventListener('click', () => { renderPlayers(); show('screen-players'); });
@@ -126,12 +163,13 @@ function renderStats() {
   const snap = sched.snapshot(p, PLAYABLE);
 
   $('stats-summary').innerHTML = `
-    <div class="stat-tile"><b>${p.totalScore.toLocaleString()}</b><span>total points</span></div>
-    <div class="stat-tile"><b>${snap.seen}</b><span>seen</span></div>
-    <div class="stat-tile"><b>${snap.known}</b><span>known</span></div>
-    <div class="stat-tile"><b>${snap.mastered}</b><span>mastered</span></div>
-    <div class="stat-tile"><b>${p.bestStreak}</b><span>best streak</span></div>
-    <div class="stat-tile"><b>${p.sessions.length}</b><span>sessions</span></div>`;
+    <div class="stat-tile"><b>${p.totalScore.toLocaleString()}</b><span>${t('tile_totalPoints')}</span></div>
+    <div class="stat-tile"><b>${snap.seen}</b><span>${t('tile_seen')}</span></div>
+    <div class="stat-tile"><b>${snap.known}</b><span>${t('tile_known')}</span></div>
+    <div class="stat-tile"><b>${snap.mastered}</b><span>${t('tile_mastered')}</span></div>
+    <div class="stat-tile"><b>${p.bestStreak}</b><span>${t('tile_bestStreak')}</span></div>
+    <div class="stat-tile"><b>${p.perfectRuns || 0}</b><span>${t('tile_perfect')}</span></div>
+    <div class="stat-tile"><b>${p.sessions.length}</b><span>${t('tile_sessions')}</span></div>`;
 
   renderEvolution(p);
 
@@ -145,25 +183,25 @@ function renderStats() {
     ? `<ol class="weak-list">${rows.map(r => {
         const acc = Math.round(100 * sched.accuracy(r.rec));
         return `<li><b>${escapeHtml(displayName(r.n))}</b>
-          <span class="badge t${tierOf(r.n)}">${TIER_NAMES[tierOf(r.n) - 1]}</span>
-          <span class="weak-acc">${acc}% correct (${r.rec.c}/${r.rec.a})</span></li>`;
+          <span class="badge t${tierOf(r.n)}">${tierName(tierOf(r.n))}</span>
+          <span class="weak-acc">${t('weakAcc', { p: acc, c: r.rec.c, a: r.rec.a })}</span></li>`;
       }).join('')}</ol>`
-    : '<p class="hint">Play a session to find out what to reinforce.</p>';
+    : `<p class="hint">${t('playHint')}</p>`;
 
   // Full table.
   const all = PLAYABLE
     .map(n => ({ n, rec: p.records[n] }))
-    .sort((a, b) => tierOf(a.n) - tierOf(b.n) || a.n.localeCompare(b.n));
+    .sort((a, b) => tierOf(a.n) - tierOf(b.n) || displayName(a.n).localeCompare(displayName(b.n)));
   $('stats-table').innerHTML = `<table class="stats-table">
-    <thead><tr><th>Country</th><th>Level</th><th>Status</th><th>Accuracy</th></tr></thead>
+    <thead><tr><th>${t('th_country')}</th><th>${t('th_level')}</th><th>${t('th_status')}</th><th>${t('th_accuracy')}</th></tr></thead>
     <tbody>${all.map(({ n, rec }) => {
       const st = sched.statusOf(rec);
       const acc = sched.accuracy(rec);
       return `<tr>
         <td>${escapeHtml(displayName(n))}</td>
-        <td><span class="badge t${tierOf(n)}">${TIER_NAMES[tierOf(n) - 1]}</span></td>
-        <td><span class="status ${st}">${st}</span></td>
-        <td>${acc == null ? '—' : Math.round(acc * 100) + '% (' + rec.c + '/' + rec.a + ')'}</td>
+        <td><span class="badge t${tierOf(n)}">${tierName(tierOf(n))}</span></td>
+        <td><span class="status ${st}">${t('status_' + st)}</span></td>
+        <td>${acc == null ? '—' : t('accCell', { p: Math.round(acc * 100), c: rec.c, a: rec.a })}</td>
       </tr>`;
     }).join('')}</tbody></table>`;
 }
@@ -173,7 +211,7 @@ function renderEvolution(p) {
   el.innerHTML = '';
   const snaps = p.snapshots;
   if (snaps.length < 2) {
-    el.innerHTML = '<p class="hint">Finish a few sessions to see your knowledge grow.</p>';
+    el.innerHTML = `<p class="hint">${t('evoHint')}</p>`;
     return;
   }
   const W = Math.min(el.clientWidth || 600, 700), H = 180, m = { t: 12, r: 12, b: 22, l: 34 };
@@ -189,9 +227,9 @@ function renderEvolution(p) {
   svg.append('path').datum(snaps).attr('class', 'evo-line known').attr('d', mkLine('known'));
   svg.append('path').datum(snaps).attr('class', 'evo-line mastered').attr('d', mkLine('mastered'));
   svg.append('text').attr('x', W - m.r).attr('y', m.t + 10).attr('text-anchor', 'end')
-    .attr('class', 'evo-legend known').text('● known');
+    .attr('class', 'evo-legend known').text(t('legend_known'));
   svg.append('text').attr('x', W - m.r).attr('y', m.t + 26).attr('text-anchor', 'end')
-    .attr('class', 'evo-legend mastered').text('● mastered');
+    .attr('class', 'evo-legend mastered').text(t('legend_mastered'));
 }
 
 // ---------- game ----------
@@ -202,7 +240,7 @@ async function ensureMap() {
   state.world = world;
   state.map = new WorldMap($('map'), world, new Set(PLAYABLE), {
     onValidate: onValidate,
-    onArm: () => $('zoom-hint').classList.add('hidden'),
+    labelFor: n => displayName(n),
   });
 }
 
@@ -214,6 +252,7 @@ function candidates() {
 async function startSession() {
   show('screen-game');
   await ensureMap();
+  state.map.refit();
   state.session = { score: 0, asked: 0, correct: 0, streak: 0, bestStreak: 0, misses: [] };
   state.recentAsked = [];
   state.forcedQueue = [];
@@ -236,7 +275,7 @@ function nextQuestion() {
   const tier = tierOf(name);
   $('prompt-country').textContent = displayName(name);
   $('prompt-tier').innerHTML =
-    `<span class="badge t${tier}">${TIER_NAMES[tier - 1]}</span>`;
+    `<span class="badge t${tier}">${tierName(tier)}</span>`;
   $('zoom-hint').classList.remove('hidden');
   updateHud();
 }
@@ -268,7 +307,7 @@ function onValidate(feature) {
     const pts = Math.round((base + speedBonus) * mult);
     s.score += pts;
     state.map.highlight(target, 'correct-flash');
-    popPoints(`+${pts}`, s.streak >= 3 ? `🔥 streak ×${mult.toFixed(1)}` : '');
+    popPoints(`+${pts}`, s.streak >= 3 ? `🔥 ×${mult.toFixed(1)}` : '');
     store.persist();
     updateHud();
     setTimeout(nextQuestion, 1300);
@@ -281,9 +320,9 @@ function onValidate(feature) {
     state.forcedQueue.push({ name: target, dueQ: state.player.qIndex + 2 + Math.floor(Math.random() * 3) });
     state.map.showCorrection(clicked, target);
     showFeedback(
-      `${nearMiss ? 'So close!' : 'Not quite.'} You clicked <b>${escapeHtml(displayName(clicked))}</b>` +
-      ` — <b>${escapeHtml(displayName(target))}</b> is at the tip of the arrow.` +
-      (nearMiss ? ' <span class="consolation">+10 for the near miss</span>' : ''));
+      `${nearMiss ? t('soClose') : t('notQuite')} ` +
+      t('youClicked', { guess: escapeHtml(displayName(clicked)), target: escapeHtml(displayName(target)) }) +
+      (nearMiss ? ` <span class="consolation">${t('nearMissBonus')}</span>` : ''));
     store.persist();
     updateHud();
   }
@@ -302,7 +341,7 @@ function giveUp() {
   sched.recordResult(state.player, target, false);
   state.forcedQueue.push({ name: target, dueQ: state.player.qIndex + 2 + Math.floor(Math.random() * 3) });
   state.map.revealTarget(target);
-  showFeedback(`<b>${escapeHtml(displayName(target))}</b> is highlighted here. It will come back soon!`);
+  showFeedback(t('revealMsg', { target: escapeHtml(displayName(target)) }));
   store.persist();
   updateHud();
 }
@@ -326,17 +365,19 @@ function updateHud() {
   const s = state.session;
   if (!s) return;
   $('hud-score').textContent = s.score.toLocaleString();
-  $('hud-streak').innerHTML = s.streak >= 2 ? `🔥 ${s.streak} in a row` : '';
-  $('hud-qcount').textContent =
-    `${s.correct}/${s.asked} correct`;
+  $('hud-perfect').innerHTML = s.misses.length === 0 ? t('perfectChip') : '';
+  $('hud-streak').innerHTML = s.streak >= 2 ? t('streakRow', { n: s.streak }) : '';
+  $('hud-qcount').textContent = t('correctCount', { c: s.correct, a: s.asked });
 }
 
 function endSession() {
   const s = state.session;
   if (!s) return;
   const p = state.player;
+  const perfect = s.asked > 0 && s.misses.length === 0;
   p.totalScore += s.score;
   p.bestStreak = Math.max(p.bestStreak, s.bestStreak);
+  if (perfect && s.asked >= 5) p.perfectRuns = (p.perfectRuns || 0) + 1;
   if (s.asked > 0) {
     p.sessions.push({ ts: Date.now(), score: s.score, asked: s.asked, correct: s.correct, bestStreak: s.bestStreak });
     p.snapshots.push(sched.snapshot(p, PLAYABLE));
@@ -345,15 +386,16 @@ function endSession() {
 
   const acc = s.asked ? Math.round(100 * s.correct / s.asked) : 0;
   const missSet = [...new Set(s.misses)];
+  $('summary-title').textContent = perfect ? t('perfectTitle') : t('sessionComplete');
   $('summary-body').innerHTML = `
     <div class="stats-summary">
-      <div class="stat-tile"><b>${s.score.toLocaleString()}</b><span>points</span></div>
-      <div class="stat-tile"><b>${acc}%</b><span>accuracy (${s.correct}/${s.asked})</span></div>
-      <div class="stat-tile"><b>${s.bestStreak}</b><span>best streak</span></div>
+      <div class="stat-tile"><b>${s.score.toLocaleString()}</b><span>${t('sum_points')}</span></div>
+      <div class="stat-tile"><b>${acc}%</b><span>${t('sum_accuracy', { c: s.correct, a: s.asked })}</span></div>
+      <div class="stat-tile"><b>${s.bestStreak}</b><span>${t('sum_bestStreak')}</span></div>
     </div>
-    ${missSet.length ? `<h3>To review</h3><p class="miss-list">${missSet.map(n =>
+    ${missSet.length ? `<h3>${t('toReview')}</h3><p class="miss-list">${missSet.map(n =>
       `<span class="badge t${tierOf(n)}">${escapeHtml(displayName(n))}</span>`).join(' ')}</p>`
-      : '<p class="hint">Perfect run — nothing to review! 🏆</p>'}`;
+      : `<p class="hint">${t('nothingToReview')}</p>`}`;
   state.session = null;
   show('screen-summary');
 }
@@ -379,6 +421,9 @@ function escapeHtml(s) {
 
 // ---------- boot ----------
 
+setLang(store.getStoredLang() ||
+  ((navigator.language || '').toLowerCase().startsWith('fr') ? 'fr' : 'en'));
+applyStaticI18n();
 renderPlayers();
 const last = store.getLastPlayer();
 if (last) selectPlayer(last);

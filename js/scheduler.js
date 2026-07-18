@@ -69,7 +69,10 @@ export function recordResult(player, name, correct) {
   if (correct) {
     rec.c++;
     rec.streak++;
-    rec.box = Math.min(5, rec.box + 1);
+    // From box 0 (new or just missed) a correct answer jumps two boxes, so
+    // two consecutive finds reach box 3 = "known". A miss then two finds
+    // validates the country instead of grinding through three repetitions.
+    rec.box = Math.min(5, rec.box + (rec.box === 0 ? 2 : 1));
   } else {
     rec.streak = 0;
     rec.box = 0;
