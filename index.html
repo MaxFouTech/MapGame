@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MapGame — Learn the World</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+<script src="vendor/d3.min.js"></script>
+<script src="vendor/topojson-client.min.js"></script>
+</head>
+<body>
+
+<!-- ===== Player selection ===== -->
+<div id="screen-players" class="screen active">
+  <div class="panel">
+    <h1 class="logo">🌍 MapGame</h1>
+    <p class="tagline">Learn where every country is — one click at a time.</p>
+    <div id="player-list" class="player-list"></div>
+    <form id="new-player-form" class="new-player">
+      <input id="new-player-name" type="text" maxlength="20" placeholder="New player name…" autocomplete="off">
+      <button type="submit" class="btn primary">Add player</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== Main menu ===== -->
+<div id="screen-menu" class="screen">
+  <div class="panel wide">
+    <div class="menu-head">
+      <h1 class="logo small">🌍 MapGame</h1>
+      <button id="btn-switch-player" class="btn ghost">⇄ <span id="menu-player-name"></span></button>
+    </div>
+
+    <h2>Choose your levels</h2>
+    <p class="hint">Pick one or more difficulty levels to train on.</p>
+    <div id="tier-chips" class="tier-chips"></div>
+
+    <div id="menu-progress" class="menu-progress"></div>
+
+    <div class="menu-actions">
+      <button id="btn-start" class="btn primary big">▶ Start training</button>
+      <button id="btn-stats" class="btn ghost">📊 My progress</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Stats ===== -->
+<div id="screen-stats" class="screen">
+  <div class="panel wide scroll">
+    <div class="menu-head">
+      <h2>📊 Progress — <span id="stats-player-name"></span></h2>
+      <button id="btn-stats-back" class="btn ghost">← Back</button>
+    </div>
+    <div id="stats-summary" class="stats-summary"></div>
+    <h3>Knowledge over time</h3>
+    <div id="stats-evolution" class="stats-evolution"></div>
+    <h3>Countries to reinforce</h3>
+    <p class="hint">Sorted by priority — these will show up more often in training.</p>
+    <div id="stats-weakest"></div>
+    <h3>All countries</h3>
+    <div id="stats-table"></div>
+  </div>
+</div>
+
+<!-- ===== Game ===== -->
+<div id="screen-game" class="screen">
+  <div id="map"></div>
+
+  <div class="hud hud-top">
+    <div class="hud-card prompt-card">
+      <div class="prompt-label" id="prompt-label">Find</div>
+      <div class="prompt-country" id="prompt-country">—</div>
+      <div class="prompt-tier" id="prompt-tier"></div>
+    </div>
+    <div class="hud-card score-card">
+      <div class="score-row"><span class="score-num" id="hud-score">0</span><span class="score-unit">pts</span></div>
+      <div class="streak-row" id="hud-streak"></div>
+      <div class="qcount-row" id="hud-qcount"></div>
+    </div>
+  </div>
+
+  <div class="hud hud-bottom">
+    <button id="btn-world" class="btn hudbtn" title="Zoom back to world view">🌐 World view</button>
+    <button id="btn-dontknow" class="btn hudbtn" title="Reveal the country (counts as a miss)">🤔 Show me</button>
+    <button id="btn-end" class="btn hudbtn danger" title="End the session">■ End session</button>
+  </div>
+
+  <div id="zoom-hint" class="zoom-hint hidden">Click anywhere to zoom in, then click the country</div>
+
+  <div id="feedback" class="feedback hidden">
+    <div id="feedback-text"></div>
+    <button id="btn-next" class="btn primary">Next ⏎</button>
+  </div>
+
+  <div id="points-popup" class="points-popup hidden"></div>
+</div>
+
+<!-- ===== Session summary ===== -->
+<div id="screen-summary" class="screen">
+  <div class="panel">
+    <h2>Session complete 🎉</h2>
+    <div id="summary-body"></div>
+    <div class="menu-actions">
+      <button id="btn-again" class="btn primary big">▶ Train again</button>
+      <button id="btn-summary-menu" class="btn ghost">Menu</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
