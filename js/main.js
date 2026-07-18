@@ -60,13 +60,16 @@ function selectPlayer(name) {
   show('screen-menu');
 }
 
-$('new-player-form').addEventListener('submit', e => {
-  e.preventDefault();
+function addPlayer() {
   const name = $('new-player-name').value.trim();
   if (!name) return;
   store.createPlayer(name);
   $('new-player-name').value = '';
   selectPlayer(name);
+}
+$('btn-add-player').addEventListener('click', addPlayer);
+$('new-player-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); addPlayer(); }
 });
 
 // ---------- menu screen ----------

@@ -17,10 +17,11 @@
     <h1 class="logo">🌍 MapGame</h1>
     <p class="tagline">Learn where every country is — one click at a time.</p>
     <div id="player-list" class="player-list"></div>
-    <form id="new-player-form" class="new-player">
+    <!-- Not a <form>: sandboxed embeds (artifact viewers) block form submission. -->
+    <div class="new-player">
       <input id="new-player-name" type="text" maxlength="20" placeholder="New player name…" autocomplete="off">
-      <button type="submit" class="btn primary">Add player</button>
-    </form>
+      <button id="btn-add-player" type="button" class="btn primary">Add player</button>
+    </div>
   </div>
 </div>
 
