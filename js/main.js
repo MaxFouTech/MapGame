@@ -141,18 +141,22 @@ function renderMenu() {
   const lv = playerLevels();
   for (const lvl of LEVELS) {
     const rec = lv[lvl.n] || {};
-    const known = lvl.countries.filter(n => ['known', 'mastered'].includes(
-      sched.statusOf(state.player.records[n]))).length;
-    const pct = Math.round(100 * known / lvl.countries.length);
+    const statuses = lvl.countries.map(n => sched.statusOf(state.player.records[n]));
+    const known = statuses.filter(s => s === 'known' || s === 'mastered').length;
+    const learning = statuses.filter(s => s === 'learning').length;
+    const total = lvl.countries.length;
     const card = document.createElement('button');
     card.className = 'level-card';
     card.innerHTML = `
       <span class="level-num l${lvl.n}">${lvl.n}</span>
       <span class="level-body">
         <span class="level-title">${escapeHtml(levelTitle(lvl))}</span>
-        <span class="level-meta">${t('countriesCount', { n: lvl.countries.length })} · ${t('knownOf', { k: known, n: lvl.countries.length })}</span>
+        <span class="level-meta">${t('countriesCount', { n: total })} · ${t('statusCounts', { k: known, l: learning })}</span>
         <span class="level-foot">${starsHtml(rec.bestStars || 0)}
-          <span class="prog-bar mini"><span class="prog-fill l${lvl.n}" style="width:${pct}%"></span></span>
+          <span class="prog-bar mini">
+            <span class="prog-fill l${lvl.n}" style="width:${100 * known / total}%"></span>
+            <span class="prog-fill l${lvl.n} soft" style="width:${100 * learning / total}%"></span>
+          </span>
         </span>
       </span>`;
     card.addEventListener('click', () => startSeries(lvl.n));

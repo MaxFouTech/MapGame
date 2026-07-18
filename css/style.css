@@ -126,9 +126,10 @@ h3 { margin: 22px 0 6px; }
 .summary-level { color: var(--ink-soft); margin: 2px 0 6px; }
 .summary-actions .btn.hidden { display: none !important; }
 
-.prog-bar { flex: 1; height: 10px; background: #e4eaef; border-radius: 6px; overflow: hidden; }
-.prog-bar.mini { height: 7px; max-width: 130px; display: inline-block; }
-.prog-fill { height: 100%; border-radius: 6px; transition: width .4s; display: block; }
+.prog-bar { flex: 1; height: 10px; background: #e4eaef; border-radius: 6px; overflow: hidden; display: flex; }
+.prog-bar.mini { height: 7px; max-width: 130px; display: inline-flex; }
+.prog-fill { height: 100%; transition: width .4s; display: block; flex: none; }
+.prog-fill.soft { opacity: .35; }
 .prog-fill.l1 { background: var(--l1); } .prog-fill.l2 { background: var(--l2); }
 .prog-fill.l3 { background: var(--l3); } .prog-fill.l4 { background: var(--l4); }
 .prog-fill.l5 { background: var(--l5); } .prog-fill.l6 { background: var(--l6); }
