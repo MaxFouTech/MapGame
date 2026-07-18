@@ -25,6 +25,16 @@ button { font: inherit; cursor: pointer; }
 .screen.active { display: flex; align-items: center; justify-content: center; }
 #screen-game.active { display: block; }
 
+/* The summary is an overlay above the game so the missed countries stay
+   visible (highlighted) on the map behind the panel. */
+#screen-summary.active {
+  position: fixed; inset: 0; z-index: 40;
+  background: rgba(233, 240, 244, .45);
+}
+#screen-summary .panel { max-height: 92vh; overflow-y: auto; }
+body.summary-open .hud, body.summary-open .zoom-hint,
+body.summary-open .feedback, body.summary-open .points-popup { display: none !important; }
+
 .panel {
   background: var(--card);
   border-radius: 18px;
@@ -99,6 +109,16 @@ h3 { margin: 22px 0 6px; }
   padding: 12px 14px;
 }
 .level-card:hover { border-color: var(--accent); background: #f4f9ff; }
+.level-card.gold {
+  border-color: #e2b93b;
+  background: linear-gradient(135deg, #fffdf3, #fdf3cf);
+  box-shadow: 0 2px 12px rgba(212, 160, 23, .18);
+}
+.level-card.gold:hover { border-color: #caa21f; }
+.level-scores { font-size: .78rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.level-card.gold .level-scores, .level-card.gold .level-meta { color: #8a6d1a; }
+.level-num.l9 { background: linear-gradient(135deg, #e7b73a, #c98f0a); font-size: 1.15rem; }
+.badge.l9 { background: linear-gradient(135deg, #e7b73a, #c98f0a); }
 .level-num {
   flex: none; width: 34px; height: 34px; border-radius: 10px;
   display: inline-flex; align-items: center; justify-content: center;
@@ -199,6 +219,7 @@ h3 { margin: 22px 0 6px; }
 .country.correct-flash { fill: var(--good) !important; animation: pulse .5s 2; }
 .country.wrong-flash { fill: var(--bad) !important; }
 .country.target-reveal { fill: var(--good) !important; animation: pulse .8s 3; }
+.country.missed-reveal { fill: var(--bad) !important; animation: pulse 1.6s infinite; }
 @keyframes pulse { 50% { opacity: .55; } }
 
 .arrow-line { fill: none; stroke: #d8544a; stroke-linecap: round; }
@@ -245,6 +266,7 @@ h3 { margin: 22px 0 6px; }
   max-width: min(640px, 92vw);
 }
 .feedback .consolation { color: var(--good); font-weight: 600; }
+.feedback .fail-streak { color: var(--bad); font-weight: 700; font-size: .85rem; margin-top: 4px; }
 
 .points-popup {
   position: absolute; top: 108px; left: 50%; transform: translateX(-50%);

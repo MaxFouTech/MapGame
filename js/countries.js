@@ -94,6 +94,14 @@ export const LEVELS = [
 const NAME_TO_LEVEL = new Map();
 for (const lvl of LEVELS) for (const c of lvl.countries) NAME_TO_LEVEL.set(c, lvl.n);
 
+// Grand Slam: a bonus series over every playable country. It is a playable
+// level but does not own any country — levelOf() keeps returning the
+// thematic level 1-8.
+LEVELS.push({
+  n: 9, slam: true, en: 'Grand Slam', fr: 'Grand Chelem',
+  countries: [...NAME_TO_LEVEL.keys()],
+});
+
 export function levelOf(name) {
   return NAME_TO_LEVEL.get(name) || 0;
 }

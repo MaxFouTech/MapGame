@@ -14,8 +14,6 @@ import { t, setLang, getLang } from './i18n.js';
 const d3 = window.d3;
 const $ = id => document.getElementById(id);
 
-const BASE_POINTS = [0, 50, 60, 70, 80, 90, 105, 120, 140]; // by level 1..8
-const SPEED_WINDOW = 15;                        // seconds for full speed bonus decay
 const TRAIN_GOAL = 2;                           // finds needed to clear a trained country
 const state = {
   playerName: null,
@@ -54,7 +52,6 @@ function applyStaticI18n() {
     el.placeholder = t(el.dataset.i18nPlaceholder);
   });
   $('prompt-label').textContent = t('find');
-  $('hud-pts').textContent = t('pts');
   $('btn-world').textContent = t('worldView');
   $('btn-dontknow').textContent = t('showMe');
   $('btn-end').textContent = t('endSession');
@@ -81,6 +78,7 @@ document.querySelectorAll('.lang-switch button').forEach(b =>
 // ---------- screens ----------
 
 function show(id) {
+  document.body.classList.remove('summary-open');
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   $(id).classList.add('active');
 }
@@ -100,7 +98,7 @@ function renderPlayers() {
     const row = document.createElement('button');
     row.className = 'player-row';
     row.innerHTML = `<span class="player-row-name">${escapeHtml(name)}</span>
-      <span class="player-row-meta">${snap.known}/${PLAYABLE.length} ${t('known')} · ${p.totalScore.toLocaleString()} pts</span>`;
+      <span class="player-row-meta">${snap.known}/${PLAYABLE.length} ${t('known')}</span>`;
     row.addEventListener('click', () => selectPlayer(name));
     list.appendChild(row);
   }
@@ -146,18 +144,23 @@ function renderMenu() {
     const learning = statuses.filter(s => s === 'learning').length;
     const total = lvl.countries.length;
     const card = document.createElement('button');
-    card.className = 'level-card';
+    card.className = 'level-card' + (rec.bestStars === 3 ? ' gold' : '');
+    const scores = rec.plays
+      ? `<span class="level-scores">${t('lastHigh', {
+          last: `${rec.lastScore}/${total}`, high: `${rec.highScore}/${total}` })}</span>`
+      : '';
     card.innerHTML = `
-      <span class="level-num l${lvl.n}">${lvl.n}</span>
+      <span class="level-num l${lvl.n}">${lvl.slam ? '👑' : lvl.n}</span>
       <span class="level-body">
         <span class="level-title">${escapeHtml(levelTitle(lvl))}</span>
         <span class="level-meta">${t('countriesCount', { n: total })} · ${t('statusCounts', { k: known, l: learning })}</span>
         <span class="level-foot">${starsHtml(rec.bestStars || 0)}
           <span class="prog-bar mini">
-            <span class="prog-fill l${lvl.n}" style="width:${100 * known / total}%"></span>
-            <span class="prog-fill l${lvl.n} soft" style="width:${100 * learning / total}%"></span>
+            <span class="prog-fill l${Math.min(lvl.n, 8)}" style="width:${100 * known / total}%"></span>
+            <span class="prog-fill l${Math.min(lvl.n, 8)} soft" style="width:${100 * learning / total}%"></span>
           </span>
         </span>
+        ${scores}
       </span>`;
     card.addEventListener('click', () => startSeries(lvl.n));
     grid.appendChild(card);
@@ -181,7 +184,7 @@ function renderCountryList() {
   const body = $('country-list-body');
   body.innerHTML = '';
   const lv = playerLevels();
-  for (const lvl of LEVELS) {
+  for (const lvl of LEVELS.filter(l => !l.slam)) {
     const rec = lv[lvl.n] || {};
     const sec = document.createElement('div');
     sec.className = 'country-section';
@@ -216,7 +219,6 @@ function renderStats() {
   const snap = sched.snapshot(p, PLAYABLE);
 
   $('stats-summary').innerHTML = `
-    <div class="stat-tile"><b>${p.totalScore.toLocaleString()}</b><span>${t('tile_totalPoints')}</span></div>
     <div class="stat-tile"><b>${snap.seen}</b><span>${t('tile_seen')}</span></div>
     <div class="stat-tile"><b>${snap.known}</b><span>${t('tile_known')}</span></div>
     <div class="stat-tile"><b>${snap.mastered}</b><span>${t('tile_mastered')}</span></div>
@@ -298,7 +300,7 @@ async function ensureMap() {
 }
 
 function newSession(mode, extra = {}) {
-  return { mode, score: 0, asked: 0, correct: 0, streak: 0, bestStreak: 0,
+  return { mode, asked: 0, correct: 0, streak: 0, bestStreak: 0,
     misses: [], ...extra };
 }
 
@@ -382,7 +384,6 @@ function onValidate(feature) {
   $('zoom-hint').classList.add('hidden');
 
   const s = state.session;
-  const elapsed = (performance.now() - state.askedAt) / 1000;
   s.asked++;
 
   sched.recordResult(state.player, target, correct);
@@ -392,13 +393,8 @@ function onValidate(feature) {
     s.streak++;
     s.bestStreak = Math.max(s.bestStreak, s.streak);
     if (s.mode === 'training' && --s.needs[target] > 0) requeue(s.queue, target, 2);
-    const base = BASE_POINTS[levelOf(target)];
-    const speedBonus = Math.round(40 * Math.max(0, SPEED_WINDOW - elapsed) / SPEED_WINDOW);
-    const mult = 1 + 0.1 * Math.min(s.streak - 1, 10);
-    const pts = Math.round((base + speedBonus) * mult);
-    s.score += pts;
     state.map.highlight(target, 'correct-flash');
-    popPoints(`+${pts}`, s.streak >= 3 ? `🔥 ×${mult.toFixed(1)}` : '');
+    popFeedback('✓', s.streak >= 3 ? t('streakRow', { n: s.streak }) : '');
     store.persist();
     updateHud();
     setTimeout(nextQuestion, 700);
@@ -410,7 +406,6 @@ function onValidate(feature) {
 function handleMiss(clicked, target) {
   const s = state.session;
   const nearMiss = clicked != null && state.map.isNeighbor(clicked, target);
-  if (nearMiss) s.score += 10;
   s.streak = 0;
   s.misses.push(target);
   if (s.mode === 'training') {
@@ -420,15 +415,19 @@ function handleMiss(clicked, target) {
   if (s.mode === 'review') {
     state.forcedQueue.push({ name: target, dueQ: state.player.qIndex + 2 + Math.floor(Math.random() * 3) });
   }
+  const failStreak = state.player.records[target]?.failStreak || 0;
+  const failNote = failStreak >= 2
+    ? `<div class="fail-streak">${t('missStreak', { n: failStreak })}</div>` : '';
   if (clicked != null) {
     state.map.showCorrection(clicked, target);
     showFeedback(
       `${nearMiss ? t('soClose') : t('notQuite')} ` +
       t('youClicked', { guess: escapeHtml(displayName(clicked)), target: escapeHtml(displayName(target)) }) +
-      (nearMiss ? ` <span class="consolation">${t('nearMissBonus')}</span>` : ''));
+      (nearMiss ? ` <span class="consolation">${t('nearMissBonus')}</span>` : '') +
+      failNote);
   } else {
     state.map.revealTarget(target);
-    showFeedback(t('revealMsg', { target: escapeHtml(displayName(target)) }));
+    showFeedback(t('revealMsg', { target: escapeHtml(displayName(target)) }) + failNote);
   }
   store.persist();
   updateHud();
@@ -450,7 +449,7 @@ function showFeedback(html) {
   $('feedback').classList.remove('hidden');
 }
 
-function popPoints(main, sub) {
+function popFeedback(main, sub) {
   const el = $('points-popup');
   el.innerHTML = `<div class="pp-main">${main}</div>${sub ? `<div class="pp-sub">${sub}</div>` : ''}`;
   el.classList.remove('hidden');
@@ -463,15 +462,17 @@ function popPoints(main, sub) {
 function updateHud() {
   const s = state.session;
   if (!s) return;
-  $('hud-score').textContent = s.score.toLocaleString();
   $('hud-perfect').innerHTML = s.misses.length === 0 ? t('perfectChip') : '';
   $('hud-streak').innerHTML = s.streak >= 2 ? t('streakRow', { n: s.streak }) : '';
   if (s.mode === 'series') {
-    $('hud-qcount').textContent = t('seriesCount', { i: s.asked, n: s.total, c: s.correct });
+    $('hud-score').textContent = `${s.correct}/${s.total}`;
+    $('hud-qcount').textContent = t('questionOf', { i: Math.min(s.asked + 1, s.total), n: s.total });
   } else if (s.mode === 'training') {
     const left = Object.values(s.needs).filter(v => v > 0).length;
+    $('hud-score').textContent = `${s.correct}`;
     $('hud-qcount').textContent = t('trainingLeft', { n: left });
   } else {
+    $('hud-score').textContent = `${s.correct}`;
     $('hud-qcount').textContent = t('correctCount', { c: s.correct, a: s.asked });
   }
 }
@@ -480,17 +481,18 @@ function updateHud() {
 
 function commonSessionSave(s, { updateLevel = false } = {}) {
   const p = state.player;
-  p.totalScore += s.score;
   p.bestStreak = Math.max(p.bestStreak, s.bestStreak);
   if (s.asked > 0) {
-    p.sessions.push({ ts: Date.now(), score: s.score, asked: s.asked, correct: s.correct, bestStreak: s.bestStreak });
+    p.sessions.push({ ts: Date.now(), asked: s.asked, correct: s.correct, bestStreak: s.bestStreak });
     p.snapshots.push(sched.snapshot(p, PLAYABLE));
   }
   if (updateLevel) {
     const lv = playerLevels();
-    const rec = lv[s.levelN] || (lv[s.levelN] = { bestStars: 0, plays: 0 });
+    const rec = lv[s.levelN] || (lv[s.levelN] = { bestStars: 0, plays: 0, highScore: 0 });
     rec.plays++;
     rec.bestStars = Math.max(rec.bestStars, s.stars);
+    rec.lastScore = s.correct;
+    rec.highScore = Math.max(rec.highScore || 0, s.correct);
     rec.lastMissed = [...new Set(s.misses)];
   }
   store.persist();
@@ -505,10 +507,9 @@ function starsFor(s) {
 }
 
 function summaryTiles(s) {
-  const acc = s.asked ? Math.round(100 * s.correct / s.asked) : 0;
+  const denom = s.mode === 'series' ? s.total : s.asked;
   return `<div class="stats-summary">
-      <div class="stat-tile"><b>${s.score.toLocaleString()}</b><span>${t('sum_points')}</span></div>
-      <div class="stat-tile"><b>${acc}%</b><span>${t('sum_accuracy', { c: s.correct, a: s.asked })}</span></div>
+      <div class="stat-tile"><b>${s.correct}/${denom}</b><span>${t('sum_found')}</span></div>
       <div class="stat-tile"><b>${s.bestStreak}</b><span>${t('sum_bestStreak')}</span></div>
     </div>`;
 }
@@ -548,7 +549,20 @@ function openSummary(s, { title, stars = null, subtitle = '' }) {
   $('btn-again').dataset.level = s.levelN || '';
   $('btn-summary-menu').textContent = t('menuBtn');
   state.session = null;
-  show('screen-summary');
+
+  // Show the summary as an overlay above the map, with the missed countries
+  // highlighted (and framed) in the background.
+  state.map.enabled = false;
+  state.map.clearHighlights();
+  if (missed.length) {
+    for (const n of missed) state.map.highlight(n, 'missed-reveal');
+    state.map.zoomToFeatures(missed, 900, 0.8);
+  } else {
+    state.map.zoomReset();
+  }
+  show('screen-game');
+  $('screen-summary').classList.add('active');
+  document.body.classList.add('summary-open');
 }
 
 function endSeries() {
@@ -585,6 +599,16 @@ function endSessionEarly() {
     openSummary(s, { title: t('endedEarly') });
   }
 }
+
+// After a mistake, a plain click anywhere on the map moves on to the next
+// question (same as the Next button). Drags/zooms don't trigger it.
+$('map').addEventListener('click', e => {
+  if (e.defaultPrevented) return;
+  if (state.phase === 'feedback' && state.session
+    && !$('feedback').classList.contains('hidden')) {
+    nextQuestion();
+  }
+});
 
 $('btn-world').addEventListener('click', () => state.map?.zoomReset());
 $('btn-dontknow').addEventListener('click', giveUp);

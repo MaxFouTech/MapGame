@@ -200,7 +200,7 @@ export class WorldMap {
   }
 
   clearHighlights() {
-    this.countryPaths.classed('correct-flash wrong-flash target-reveal', false);
+    this.countryPaths.classed('correct-flash wrong-flash target-reveal missed-reveal', false);
     this.overlay.selectAll('*').remove();
   }
 

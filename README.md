@@ -22,7 +22,8 @@ because the app fetches the map data.)
    (localStorage). The interface is available in **English and French**
    (FR/EN toggle, country names included).
 2. **Pick a level** — 8 themed levels of 20-30 countries, ordered by
-   difficulty (from *World Giants* to *Microstates & Ends of the Earth*).
+   difficulty (from *World Giants* to *Microstates & Ends of the Earth*),
+   plus a **Grand Slam** level covering all 197 countries.
    A series asks every country of the level once, in random order.
 3. **Find the country**: click it on the map. You manage the view yourself —
    scroll to zoom, drag to pan. Every click on a country is an answer.
@@ -31,10 +32,13 @@ because the app fetches the map data.)
    A near miss (you clicked a neighbour) earns a small consolation.
 5. **Not sure?** Use *Show me* — it reveals the country (counts as a miss).
 6. **Stars**: each series ends with a rating — ★★★ for a perfect run,
-   ★★ for ≥80% accuracy, ★ for ≥50%. Best stars are shown on the level
-   cards. If you miss countries, a **training mode** replays just your
-   errors until each has been found twice — then retry the level for 3
-   stars.
+   ★★ for ≥80% accuracy, ★ for ≥50%. The score is simply the number of
+   countries found (e.g. 18/20); each level card shows your last score,
+   your best score and your best stars, and turns **gold** once you get
+   3 stars. The end-of-series summary highlights your missed countries
+   on the map behind it. If you miss countries, a **training mode**
+   replays just your errors until each has been found twice — then retry
+   the level for 3 stars.
 7. **Smart review** — an endless adaptive mode driven by the
    spaced-repetition scheduler, prioritising your weakest and overdue
    countries across all levels.

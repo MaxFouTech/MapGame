@@ -64,17 +64,19 @@ export function pickTarget(player, candidates, recentAsked, forcedQueue) {
 
 export function recordResult(player, name, correct) {
   const rec = player.records[name] ||
-    (player.records[name] = { a: 0, c: 0, box: 0, lastQ: 0, streak: 0 });
+    (player.records[name] = { a: 0, c: 0, box: 0, lastQ: 0, streak: 0, failStreak: 0 });
   rec.a++;
   if (correct) {
     rec.c++;
     rec.streak++;
+    rec.failStreak = 0;
     // From box 0 (new or just missed) a correct answer jumps two boxes, so
     // two consecutive finds reach box 3 = "known". A miss then two finds
     // validates the country instead of grinding through three repetitions.
     rec.box = Math.min(5, rec.box + (rec.box === 0 ? 2 : 1));
   } else {
     rec.streak = 0;
+    rec.failStreak = (rec.failStreak || 0) + 1;
     rec.box = 0;
   }
   rec.lastQ = player.qIndex;
