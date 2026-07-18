@@ -162,7 +162,10 @@ h3 { margin: 22px 0 6px; }
 .map-label.guess .map-label-text { fill: var(--bad); }
 .map-label.target .map-label-text { fill: #1b7a4e; }
 
-.hud { position: absolute; z-index: 10; display: flex; gap: 12px; }
+/* The hud containers span the map but must not swallow clicks in the empty
+   space between their cards/buttons. */
+.hud { position: absolute; z-index: 10; display: flex; gap: 12px; pointer-events: none; }
+.hud-card, .hudbtn { pointer-events: auto; }
 .hud-top { top: 14px; left: 14px; right: 14px; justify-content: space-between; align-items: flex-start; }
 .hud-bottom { bottom: 14px; left: 14px; }
 .hud-card {
@@ -203,7 +206,7 @@ h3 { margin: 22px 0 6px; }
 }
 .points-popup .pp-main { font-size: 2.2rem; font-weight: 800; color: var(--good); text-shadow: 0 2px 8px rgba(255,255,255,.9); }
 .points-popup .pp-sub { font-weight: 700; color: #d9631e; }
-.points-popup.animate { animation: rise 1.2s ease-out forwards; }
+.points-popup.animate { animation: rise .9s ease-out forwards; }
 @keyframes rise { from { opacity: 0; transform: translate(-50%, 14px); }
   20% { opacity: 1; } to { opacity: 0; transform: translate(-50%, -26px); } }
 
@@ -214,4 +217,25 @@ h3 { margin: 22px 0 6px; }
 @media (max-width: 640px) {
   .prompt-country { font-size: 1.15rem; }
   .panel { padding: 24px; }
+}
+
+/* Landscape phones: shrink the hud so the map keeps the space. */
+@media (max-height: 520px) {
+  .hud-top { top: 8px; left: 8px; right: 8px; }
+  .hud-bottom { bottom: 8px; left: 8px; gap: 8px; }
+  .hud-card { padding: 7px 12px; border-radius: 10px; }
+  .prompt-label { font-size: .62rem; }
+  .prompt-country { font-size: 1.05rem; }
+  .prompt-tier .badge { font-size: .66rem; }
+  .score-num { font-size: 1.05rem; }
+  .score-unit { font-size: .68rem; }
+  .perfect-row { font-size: .72rem; }
+  .streak-row { font-size: .74rem; }
+  .qcount-row { font-size: .7rem; }
+  .hudbtn { padding: 6px 11px; font-size: .8rem; border-radius: 8px; }
+  .zoom-hint { bottom: 48px; font-size: .74rem; padding: 5px 12px; }
+  .feedback { padding: 9px 14px; font-size: .85rem; gap: 10px; }
+  .feedback .btn { padding: 7px 12px; font-size: .85rem; }
+  .points-popup { top: 76px; }
+  .points-popup .pp-main { font-size: 1.6rem; }
 }

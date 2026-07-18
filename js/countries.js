@@ -117,7 +117,7 @@ const FR_NAMES = {
   'Vietnam': 'Viêt Nam', 'Thailand': 'Thaïlande', 'Philippines': 'Philippines',
   'Pakistan': 'Pakistan', 'Iran': 'Iran', 'Iraq': 'Irak', 'Israel': 'Israël',
   'Mongolia': 'Mongolie', 'Kazakhstan': 'Kazakhstan', 'Afghanistan': 'Afghanistan',
-  'Czechia': 'Tchéquie', 'Slovakia': 'Slovaquie', 'Hungary': 'Hongrie',
+  'Czechia': 'République tchèque', 'Slovakia': 'Slovaquie', 'Hungary': 'Hongrie',
   'Romania': 'Roumanie', 'Bulgaria': 'Bulgarie', 'Croatia': 'Croatie',
   'Serbia': 'Serbie', 'Belarus': 'Biélorussie', 'Lithuania': 'Lituanie',
   'Latvia': 'Lettonie', 'Estonia': 'Estonie', 'Tunisia': 'Tunisie',

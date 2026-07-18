@@ -310,7 +310,7 @@ function onValidate(feature) {
     popPoints(`+${pts}`, s.streak >= 3 ? `🔥 ×${mult.toFixed(1)}` : '');
     store.persist();
     updateHud();
-    setTimeout(nextQuestion, 1300);
+    setTimeout(nextQuestion, 700);
   } else {
     const nearMiss = state.map.isNeighbor(clicked, target);
     if (nearMiss) s.score += 10;
@@ -358,7 +358,7 @@ function popPoints(main, sub) {
   el.classList.remove('animate');
   void el.offsetWidth; // restart animation
   el.classList.add('animate');
-  setTimeout(() => el.classList.add('hidden'), 1200);
+  setTimeout(() => el.classList.add('hidden'), 900);
 }
 
 function updateHud() {
