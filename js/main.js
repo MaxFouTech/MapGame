@@ -92,7 +92,8 @@ document.querySelectorAll('.lang-switch button[data-lang]').forEach(b =>
 
 let worldPromise = null;
 function loadWorld() {
-  worldPromise = worldPromise || fetch('data/countries-50m.json').then(r => r.json());
+  // Prefer the preload kicked off in <head>; fall back to fetching here.
+  worldPromise = worldPromise || window.__worldFetch || fetch('data/countries-50m.json').then(r => r.json());
   return worldPromise;
 }
 
