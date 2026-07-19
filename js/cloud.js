@@ -36,7 +36,10 @@ async function req(path, opts = {}, timeout = 6000) {
       },
       signal: ctrl.signal,
     });
-    setOnline(true);
+    // "Online" means functional: a reachable backend that answers with
+    // config errors (missing tables, bad key) is offline for our purposes.
+    // 409 is a legitimate business answer (name conflict), keep it online.
+    setOnline(res.ok || res.status === 409);
     return res;
   } catch (e) {
     setOnline(false);
