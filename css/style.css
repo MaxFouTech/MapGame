@@ -39,6 +39,8 @@ button { font: inherit; cursor: pointer; color: inherit; }
 }
 #map.ambient { pointer-events: none; }
 #map.ambient::after { opacity: 1; }
+/* Hidden background globe on mobile menu screens (perf; it's covered). */
+#map.bg-hidden { display: none; }
 .screen { position: relative; z-index: 1; }
 
 /* 100dvh tracks the *visible* viewport on mobile (URL bar shown/hidden),

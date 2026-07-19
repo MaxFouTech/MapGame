@@ -8,22 +8,6 @@ const d3 = window.d3;
 
 const clampLat = v => Math.max(-89, Math.min(89, v));
 
-// Coarse copy of a polygon geometry (keep every `step`-th vertex, ring kept
-// closed) — used only to render the decorative background globe cheaply.
-function decimateGeom(geometry, step) {
-  const ring = coords => {
-    if (coords.length <= 8) return coords;
-    const out = [coords[0]];
-    for (let i = step; i < coords.length - 1; i += step) out.push(coords[i]);
-    out.push(coords[0]);
-    return out.length >= 4 ? out : coords;
-  };
-  const poly = rings => rings.map(ring);
-  if (geometry.type === 'Polygon') return { type: 'Polygon', coordinates: poly(geometry.coordinates) };
-  if (geometry.type === 'MultiPolygon') return { type: 'MultiPolygon', coordinates: geometry.coordinates.map(poly) };
-  return geometry;
-}
-
 export class GlobeMap {
   constructor(container, world, playableSet, callbacks, opts = {}) {
     this.container = container;
@@ -37,10 +21,6 @@ export class GlobeMap {
     this.byName = byName;
     this.neighbors = neighbors;
     this.tiny = tiny;
-    // Low-detail geometry (name -> decimated) for the ambient spin: ~3x
-    // fewer vertices to project each frame, imperceptible on the veiled
-    // background globe. The game uses full 50m detail for precise clicks.
-    this.loGeom = new Map(features.map(f => [f.properties.name, decimateGeom(f.geometry, 3)]));
 
     this._arrow = null;   // {coords: [[lon,lat],...]}
     this._labels = [];    // {name, kind, lonlat}
@@ -247,12 +227,8 @@ export class GlobeMap {
 
   _render() {
     this.sphere.attr('d', this.path({ type: 'Sphere' }));
-    // Cheap decimated geometry for the decorative ambient spin; full detail
-    // in game (precise clicks, and no per-frame cost since it only renders
-    // on interaction).
-    const amb = this.ambient;
     this.countryPaths
-      .attr('d', f => this.path(amb ? this.loGeom.get(f.properties.name) : f))
+      .attr('d', f => this.path(f))
       .attr('stroke-width', 0.5 / Math.sqrt(this.k));
     // Tiny-country hit areas / ring markers only matter above the ring-zoom
     // threshold — below it (including every ambient spin frame) skip

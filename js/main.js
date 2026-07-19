@@ -99,11 +99,19 @@ function loadWorld() {
 
 // The single map/globe instance is a permanent background layer: veiled and
 // slowly spinning behind the menus (ambient), fully interactive in game.
+// On small screens the decorative background is hidden entirely on menu
+// screens (perf + it is mostly covered by the panel anyway).
 function applyAmbient() {
-  const ambient = state.currentScreen !== 'screen-game';
-  $('map').classList.toggle('ambient', ambient);
-  state.map?.setAmbient(ambient);
+  const menu = state.currentScreen !== 'screen-game';
+  const hideBg = menu && window.matchMedia('(max-width: 640px)').matches;
+  $('map').classList.toggle('ambient', menu);
+  $('map').classList.toggle('bg-hidden', hideBg);
+  // In-game -> false; menu on desktop -> ambient spin; menu on mobile ->
+  // ambient flag off so the spin stops (nothing to render while hidden).
+  state.map?.setAmbient(menu && !hideBg);
 }
+
+window.matchMedia('(max-width: 640px)').addEventListener('change', applyAmbient);
 
 function show(id) {
   document.body.classList.remove('summary-open');
