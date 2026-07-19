@@ -65,9 +65,15 @@ export class GlobeMap {
       });
 
     // Invisible enlarged hit outlines for tiny countries (see WorldMap).
+    const tinyFeats = this.features.filter(f =>
+      this.playable.has(f.properties.name) && this.tiny.has(f.properties.name));
+    const validate = (event, f) => {
+      if (!this.enabled || event.defaultPrevented) return;
+      event.stopPropagation();
+      this.cb.onValidate(f);
+    };
     this.hitPaths = this.svg.append('g').selectAll('path.hit')
-      .data(this.features.filter(f =>
-        this.playable.has(f.properties.name) && this.tiny.has(f.properties.name)))
+      .data(tinyFeats)
       .join('path')
       .attr('class', 'hit')
       .attr('fill', 'none')
@@ -75,11 +81,23 @@ export class GlobeMap {
       .attr('stroke-width', 16)
       .style('pointer-events', 'stroke')
       .style('display', 'none')
-      .on('click', (event, f) => {
-        if (!this.enabled || event.defaultPrevented) return;
-        event.stopPropagation();
-        this.cb.onValidate(f);
-      });
+      .on('click', validate);
+
+    // Visible ring markers over tiny countries (screen-space, hidden when
+    // the country faces away from the viewer).
+    this.markerLL = new Map(tinyFeats.map(f =>
+      [f.properties.name, d3.geoCentroid(mainGeometry(f))]));
+    this.markers = this.svg.append('g').selectAll('g.tiny-marker')
+      .data(tinyFeats).join('g')
+      .attr('class', 'tiny-marker')
+      .style('display', 'none')
+      .on('click', validate);
+    this.markers.append('circle').attr('class', 'tm-hit').attr('r', 16).attr('fill', 'transparent');
+    this.markers.append('circle').attr('class', 'tm-ring').attr('r', 7)
+      .attr('fill', f => this.colors.get(f.properties.name))
+      .attr('fill-opacity', 0.22)
+      .attr('stroke', f => this.colors.get(f.properties.name))
+      .attr('stroke-width', 1.6);
 
     this.overlay = this.svg.append('g').attr('class', 'overlay-layer');
 
@@ -135,6 +153,16 @@ export class GlobeMap {
     this.hitPaths
       .attr('d', f => this.path(f))
       .style('display', this.k >= 1.6 ? null : 'none');
+    const center = this._viewCenter();
+    const showMarkers = this.k >= 1.6;
+    this.markers
+      .attr('transform', f => {
+        const p = this.projection(this.markerLL.get(f.properties.name));
+        return p ? `translate(${p[0]},${p[1]})` : null;
+      })
+      .style('display', f => showMarkers
+        && d3.geoDistance(this.markerLL.get(f.properties.name), center) < Math.PI / 2 - 0.05
+        ? null : 'none');
     this._renderOverlay();
   }
 

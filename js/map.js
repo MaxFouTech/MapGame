@@ -158,6 +158,22 @@ export class WorldMap {
       .style('display', 'none')
       .on('click', (event, f) => this._onCountryClick(event, f));
 
+    // Visible ring markers over tiny countries once zoomed in: a fat,
+    // findable touch target (32px hit) plus a colored ring affordance.
+    const tinyFeats = this.features.filter(f =>
+      this.playable.has(f.properties.name) && this.tiny.has(f.properties.name));
+    this.markers = this.g.append('g').selectAll('g.tiny-marker')
+      .data(tinyFeats).join('g')
+      .attr('class', 'tiny-marker')
+      .style('display', 'none')
+      .on('click', (event, f) => this._onCountryClick(event, f));
+    this.markers.append('circle').attr('class', 'tm-hit').attr('fill', 'transparent');
+    this.markers.append('circle').attr('class', 'tm-ring')
+      .attr('fill', f => this.colors.get(f.properties.name))
+      .attr('fill-opacity', 0.22)
+      .attr('stroke', f => this.colors.get(f.properties.name));
+    this._placeMarkers();
+
     // Keep overlay on top of country paths.
     this.overlay.raise();
 
@@ -172,9 +188,25 @@ export class WorldMap {
         this.hitPaths
           .attr('stroke-width', 18 / this.k)
           .style('display', this.k >= 2.2 ? null : 'none');
+        this._updateMarkers();
         this._scaleOverlay();
       });
     this.svg.call(this.zoom).on('dblclick.zoom', null);
+  }
+
+  _placeMarkers() {
+    this.markers.attr('transform', f => {
+      const c = this.path.centroid(this._mainPolygon(f));
+      return `translate(${c[0]},${c[1]})`;
+    });
+  }
+
+  // Screen-constant sizes: ring ~7px radius, hit ~16px, at any zoom.
+  _updateMarkers() {
+    const k = this.k || 1;
+    this.markers.style('display', k >= 2.2 ? null : 'none');
+    this.markers.select('.tm-hit').attr('r', 16 / k);
+    this.markers.select('.tm-ring').attr('r', 7 / k).attr('stroke-width', 1.6 / k);
   }
 
   _fitProjection() {
@@ -192,6 +224,7 @@ export class WorldMap {
     this._fitProjection();
     this.countryPaths.attr('d', this.path);
     this.hitPaths.attr('d', this.path);
+    this._placeMarkers();
   }
 
   // A click on a country is always an answer — the player manages zoom and
