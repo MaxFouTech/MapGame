@@ -108,6 +108,45 @@ h3 { margin: 22px 0 6px; }
 }
 .new-player input:focus { border-color: var(--accent); }
 
+/* ===== pin panel / player screen extras ===== */
+.pin-panel {
+  border: 2px solid var(--accent); border-radius: 12px;
+  padding: 12px 14px; margin-bottom: 16px; background: #f4f9ff;
+  text-align: left;
+}
+.pin-panel p { margin-bottom: 8px; font-weight: 600; }
+.pin-error { color: var(--bad); font-size: .85rem; margin-top: 6px; }
+#new-player-pin, #pin-input {
+  width: 150px; flex: none; padding: 10px 14px;
+  border: 2px solid #e2e9ee; border-radius: 10px; font: inherit; outline: none;
+}
+#new-player-pin:focus, #pin-input:focus { border-color: var(--accent); }
+.player-row.cloud .player-row-meta::before { content: '☁️ '; }
+
+/* ===== menu footer / online badge ===== */
+.menu-footer {
+  display: flex; align-items: center; gap: 10px; margin-top: 16px;
+  padding-top: 10px; border-top: 1px solid #edf1f4;
+}
+.menu-footer-spacer { flex: 1; }
+.online-badge { font-size: .8rem; color: var(--ink-soft); }
+.online-badge.off { color: var(--t4, #e07b39); }
+.btn.small { padding: 5px 10px; font-size: .8rem; }
+#reset-confirm { display: inline-flex; align-items: center; gap: 8px; font-size: .85rem; color: var(--bad); }
+
+/* ===== leaderboard ===== */
+.lb-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 14px; }
+.lb-tab {
+  border: 2px solid #dbe4ea; background: #fff; border-radius: 999px;
+  padding: 5px 12px; font-weight: 700; font-size: .82rem; color: var(--ink-soft);
+}
+.lb-tab.on { border-color: var(--accent); color: var(--accent-dark); background: #eaf3fd; }
+.lb-table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.lb-table th, .lb-table td { text-align: left; padding: 7px 8px; border-bottom: 1px solid #edf1f4; }
+.lb-table th { color: var(--ink-soft); font-weight: 600; font-size: .8rem; }
+.lb-table td.num { font-variant-numeric: tabular-nums; }
+.lb-table tr.me td { background: #eaf3fd; font-weight: 700; }
+
 /* ===== menu ===== */
 .menu-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .menu-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; align-items: center; }

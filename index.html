@@ -20,11 +20,27 @@
     <h1 class="logo">🌍 MapGame</h1>
     <p class="tagline" data-i18n="tagline"></p>
     <div id="player-list" class="player-list"></div>
+    <p id="cloud-players-title" class="hint hidden" data-i18n="cloudPlayers"></p>
+    <div id="cloud-list" class="player-list"></div>
+
+    <!-- PIN prompt for selecting / linking an existing player -->
+    <div id="pin-panel" class="pin-panel hidden">
+      <p id="pin-panel-label"></p>
+      <div class="new-player">
+        <input id="pin-input" type="tel" inputmode="numeric" maxlength="4" autocomplete="off">
+        <button id="btn-pin-ok" class="btn primary" data-i18n="ok"></button>
+        <button id="btn-pin-cancel" class="btn ghost" data-i18n="cancel"></button>
+      </div>
+      <p id="pin-error" class="pin-error hidden"></p>
+    </div>
+
     <!-- Not a <form>: sandboxed embeds (artifact viewers) block form submission. -->
     <div class="new-player">
       <input id="new-player-name" type="text" maxlength="20" data-i18n-placeholder="placeholderName" autocomplete="off">
+      <input id="new-player-pin" type="tel" inputmode="numeric" maxlength="4" data-i18n-placeholder="pinPlaceholder" autocomplete="off">
       <button id="btn-add-player" type="button" class="btn primary" data-i18n="addPlayer"></button>
     </div>
+    <p id="player-msg" class="pin-error hidden"></p>
   </div>
 </div>
 
@@ -50,9 +66,32 @@
 
     <div class="menu-actions">
       <button id="btn-review" class="btn primary" data-i18n="reviewBtn"></button>
+      <button id="btn-leaderboard" class="btn ghost" data-i18n="leaderboardBtn"></button>
       <button id="btn-countries" class="btn ghost" data-i18n="countryListBtn"></button>
       <button id="btn-stats" class="btn ghost" data-i18n="myProgress"></button>
     </div>
+    <div class="menu-footer">
+      <span id="online-badge" class="online-badge"></span>
+      <span class="menu-footer-spacer"></span>
+      <button id="btn-reset" class="btn ghost danger small" data-i18n="resetBtn"></button>
+      <span id="reset-confirm" class="hidden">
+        <span data-i18n="resetConfirm"></span>
+        <button id="btn-reset-yes" class="btn danger small" data-i18n="resetYes"></button>
+        <button id="btn-reset-no" class="btn ghost small" data-i18n="cancel"></button>
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Leaderboard ===== -->
+<div id="screen-leaderboard" class="screen">
+  <div class="panel wide scroll">
+    <div class="menu-head">
+      <h2 data-i18n="leaderboardBtn"></h2>
+      <button id="btn-lb-back" class="btn ghost" data-i18n="back"></button>
+    </div>
+    <div id="lb-tabs" class="lb-tabs"></div>
+    <div id="lb-body"></div>
   </div>
 </div>
 

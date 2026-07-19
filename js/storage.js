@@ -38,7 +38,7 @@ export function getPlayer(name) {
   return db.players[name] || null;
 }
 
-export function createPlayer(name) {
+export function createPlayer(name, extra = {}) {
   if (!db.players[name]) {
     db.players[name] = {
       created: Date.now(),
@@ -50,10 +50,31 @@ export function createPlayer(name) {
       sessions: [],            // {ts, score, asked, correct, bestStreak}
       snapshots: [],           // {ts, known, mastered, seen}
       levels: {},              // levelN -> {bestStars, plays, lastMissed}
+      pinHash: null,           // sha256(name:pin), also mirrored in the cloud
+      cloudId: null,           // players.id in Supabase once linked
+      dirty: {},               // levelN -> true, waiting for cloud sync
+      ...extra,
     };
     save();
   }
   return db.players[name];
+}
+
+// Wipe a player's progress (records, sessions, stars, scores) but keep the
+// identity (name, PIN, cloud link).
+export function resetPlayerData(name) {
+  const p = db.players[name];
+  if (!p) return;
+  p.qIndex = 0;
+  p.totalScore = 0;
+  p.bestStreak = 0;
+  p.perfectRuns = 0;
+  p.records = {};
+  p.sessions = [];
+  p.snapshots = [];
+  p.levels = {};
+  p.dirty = {};
+  save();
 }
 
 export function deletePlayer(name) {

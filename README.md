@@ -47,6 +47,22 @@ because the app fetches the map data.)
 8. **All countries** — a browsable list of every country grouped by level,
    colored by your knowledge status.
 
+## Online leaderboard (Supabase)
+
+Scores sync to a shared Supabase leaderboard (best score, stars and plays
+per level, per player). Setup is a one-time paste of
+[`supabase/setup.sql`](supabase/setup.sql) into the Supabase SQL Editor;
+the project URL and publishable key live in `js/config.js`.
+
+- Players are identified by name + a 4-digit PIN (hashed client-side),
+  asked when creating or picking a player — so you can log in from any
+  device and nobody can play under your name by accident.
+- If the backend is unreachable the game switches to **offline mode**
+  (badge in the menu): everything works locally and pending scores sync
+  automatically the next time the backend responds.
+- "Reset my data" in the menu wipes your progress and your leaderboard
+  rows but keeps your name and PIN.
+
 ## The training strategy
 
 Every answer feeds a Leitner-style spaced-repetition system:

@@ -11,6 +11,7 @@ import * as sched from './scheduler.js';
 import { WorldMap, mainGeometry } from './map.js';
 import { GlobeMap } from './globe.js';
 import { t, setLang, getLang } from './i18n.js';
+import * as cloud from './cloud.js';
 
 const d3 = window.d3;
 const $ = id => document.getElementById(id);
@@ -86,13 +87,16 @@ function show(id) {
   $(id).classList.add('active');
 }
 
-// ---------- player screen ----------
+// ---------- player screen (with PIN + cloud) ----------
+
+state.cloudPlayers = [];   // fetched from Supabase
+state.pinRequest = null;   // { name, mode: 'select'|'set'|'link' }
 
 function renderPlayers() {
   const list = $('player-list');
   list.innerHTML = '';
   const players = store.listPlayers();
-  if (!players.length) {
+  if (!players.length && !state.cloudPlayers.length) {
     list.innerHTML = `<p class="hint">${t('noPlayers')}</p>`;
   }
   for (const name of players) {
@@ -102,10 +106,83 @@ function renderPlayers() {
     row.className = 'player-row';
     row.innerHTML = `<span class="player-row-name">${escapeHtml(name)}</span>
       <span class="player-row-meta">${snap.known}/${PLAYABLE.length} ${t('known')}</span>`;
-    row.addEventListener('click', () => selectPlayer(name));
+    row.addEventListener('click', () =>
+      openPinPanel(name, p.pinHash ? 'select' : 'set'));
     list.appendChild(row);
   }
+
+  // Cloud players not present on this device (log in from another browser).
+  const localNames = new Set(players);
+  const remote = state.cloudPlayers.filter(c => !localNames.has(c.name));
+  $('cloud-players-title').classList.toggle('hidden', remote.length === 0);
+  const cl = $('cloud-list');
+  cl.innerHTML = '';
+  for (const c of remote) {
+    const row = document.createElement('button');
+    row.className = 'player-row cloud';
+    row.innerHTML = `<span class="player-row-name">${escapeHtml(c.name)}</span>
+      <span class="player-row-meta"></span>`;
+    row.addEventListener('click', () => openPinPanel(c.name, 'link'));
+    cl.appendChild(row);
+  }
 }
+
+function openPinPanel(name, mode) {
+  state.pinRequest = { name, mode };
+  $('pin-panel-label').textContent =
+    mode === 'set' ? t('pinSet', { name }) : t('pinFor', { name });
+  $('pin-error').classList.add('hidden');
+  $('pin-input').value = '';
+  $('pin-panel').classList.remove('hidden');
+  $('pin-input').focus();
+}
+
+function closePinPanel() {
+  state.pinRequest = null;
+  $('pin-panel').classList.add('hidden');
+}
+
+function pinError(msg) {
+  const el = $('pin-error');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+
+async function submitPin() {
+  const reqst = state.pinRequest;
+  if (!reqst) return;
+  const pin = $('pin-input').value.trim();
+  if (!/^\d{4}$/.test(pin)) { pinError(t('pinFormat')); return; }
+  const hash = await cloud.pinHash(reqst.name, pin);
+
+  if (reqst.mode === 'select') {
+    const p = store.getPlayer(reqst.name);
+    if (p.pinHash !== hash) { pinError(t('pinBad')); return; }
+    closePinPanel();
+    selectPlayer(reqst.name);
+  } else if (reqst.mode === 'set') {
+    // Legacy local player without a PIN: set it now, then link to cloud.
+    const p = store.getPlayer(reqst.name);
+    p.pinHash = hash;
+    store.persist();
+    closePinPanel();
+    selectPlayer(reqst.name);
+    linkToCloud(reqst.name);
+  } else if (reqst.mode === 'link') {
+    const c = state.cloudPlayers.find(x => x.name === reqst.name);
+    if (!c || c.pin_hash !== hash) { pinError(t('pinBad')); return; }
+    store.createPlayer(reqst.name, { pinHash: hash, cloudId: c.id });
+    if (c.lang) { setLang(c.lang); store.setStoredLang(c.lang); applyStaticI18n(); }
+    closePinPanel();
+    selectPlayer(reqst.name);
+  }
+}
+
+$('btn-pin-ok').addEventListener('click', submitPin);
+$('btn-pin-cancel').addEventListener('click', closePinPanel);
+$('pin-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); submitPin(); }
+});
 
 function selectPlayer(name) {
   state.playerName = name;
@@ -113,19 +190,95 @@ function selectPlayer(name) {
   store.touchPlayer(name);
   renderMenu();
   show('screen-menu');
+  syncDirty();
 }
 
-function addPlayer() {
+function playerMsg(text) {
+  const el = $('player-msg');
+  el.textContent = text;
+  el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('hidden'), 5000);
+}
+
+async function addPlayer() {
   const name = $('new-player-name').value.trim();
+  const pin = $('new-player-pin').value.trim();
   if (!name) return;
-  store.createPlayer(name);
+  if (!/^\d{4}$/.test(pin)) { playerMsg(t('pinFormat')); return; }
+  if (store.getPlayer(name)) { openPinPanel(name, store.getPlayer(name).pinHash ? 'select' : 'set'); return; }
+  const hash = await cloud.pinHash(name, pin);
+  store.createPlayer(name, { pinHash: hash });
   $('new-player-name').value = '';
+  $('new-player-pin').value = '';
   selectPlayer(name);
+  linkToCloud(name);
 }
 $('btn-add-player').addEventListener('click', addPlayer);
 $('new-player-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); $('new-player-pin').focus(); }
+});
+$('new-player-pin').addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); addPlayer(); }
 });
+
+// ---------- cloud sync ----------
+
+// Create or attach the cloud identity for a local player (fire-and-forget).
+async function linkToCloud(name) {
+  const p = store.getPlayer(name);
+  if (!p || !p.pinHash || p.cloudId || p.localOnly) return;
+  try {
+    const res = await cloud.createPlayer(name, p.pinHash, getLang());
+    if (res.conflict) {
+      const remote = await cloud.getPlayer(name);
+      if (remote && remote.pin_hash === p.pinHash) {
+        p.cloudId = remote.id;
+      } else {
+        p.localOnly = true;
+        playerMsg(t('localOnlyWarn'));
+      }
+    } else {
+      p.cloudId = res.id;
+    }
+    store.persist();
+    updateOnlineBadge();
+    if (p.cloudId) syncDirty();
+  } catch (e) { /* offline — will retry on next sync */ }
+}
+
+// Push pending level results for the current player.
+async function syncDirty() {
+  const p = state.player;
+  if (!p) return;
+  if (!p.cloudId) { linkToCloud(state.playerName); return; }
+  const dirty = Object.keys(p.dirty || {});
+  for (const lvlN of dirty) {
+    const lvl = LEVELS.find(l => l.n === Number(lvlN));
+    const rec = (p.levels || {})[lvlN];
+    if (!lvl || !rec) { delete p.dirty[lvlN]; continue; }
+    try {
+      const ok = await cloud.pushLevel(p.cloudId, state.playerName, Number(lvlN), rec, lvl.countries.length);
+      if (ok) { delete p.dirty[lvlN]; store.persist(); }
+    } catch (e) { break; /* offline — keep dirty */ }
+  }
+  updateOnlineBadge();
+}
+
+async function refreshCloudPlayers() {
+  try {
+    state.cloudPlayers = await cloud.listPlayers();
+    if ($('screen-players').classList.contains('active')) renderPlayers();
+  } catch (e) { /* offline */ }
+  updateOnlineBadge();
+}
+
+function updateOnlineBadge() {
+  const el = $('online-badge');
+  const on = cloud.isOnline();
+  el.textContent = on ? t('onlineBadge') : t('offlineBadge');
+  el.classList.toggle('off', !on);
+}
+cloud.onStatus(updateOnlineBadge);
 
 // ---------- menu screen ----------
 
@@ -170,8 +323,95 @@ function renderMenu() {
   }
 }
 
-$('btn-switch-player').addEventListener('click', () => { renderPlayers(); show('screen-players'); });
+$('btn-switch-player').addEventListener('click', () => { renderPlayers(); show('screen-players'); refreshCloudPlayers(); });
 $('btn-review').addEventListener('click', startReview);
+$('btn-leaderboard').addEventListener('click', () => {
+  state.lbRows = null; // refetch on each visit
+  show('screen-leaderboard');
+  renderLeaderboard('total');
+});
+$('btn-lb-back').addEventListener('click', () => { renderMenu(); show('screen-menu'); });
+
+// ---------- reset my data ----------
+
+$('btn-reset').addEventListener('click', () => {
+  $('btn-reset').classList.add('hidden');
+  $('reset-confirm').classList.remove('hidden');
+});
+$('btn-reset-no').addEventListener('click', () => {
+  $('reset-confirm').classList.add('hidden');
+  $('btn-reset').classList.remove('hidden');
+});
+$('btn-reset-yes').addEventListener('click', async () => {
+  const p = state.player;
+  store.resetPlayerData(state.playerName);
+  if (p?.cloudId) { try { await cloud.deletePlayerRows(p.cloudId); } catch (e) { /* offline */ } }
+  $('reset-confirm').classList.add('hidden');
+  $('btn-reset').classList.remove('hidden');
+  renderMenu();
+});
+
+// ---------- leaderboard screen ----------
+
+async function renderLeaderboard(sel) {
+  state.lbSel = sel;
+  const tabs = $('lb-tabs');
+  tabs.innerHTML = '';
+  const mkTab = (key, label) => {
+    const b = document.createElement('button');
+    b.className = 'lb-tab' + (String(state.lbSel) === String(key) ? ' on' : '');
+    b.textContent = label;
+    b.addEventListener('click', () => renderLeaderboard(key));
+    tabs.appendChild(b);
+  };
+  mkTab('total', t('lbTotal'));
+  for (const lvl of LEVELS) mkTab(lvl.n, lvl.slam ? '👑' : String(lvl.n));
+
+  const body = $('lb-body');
+  let rows = state.lbRows;
+  if (!rows) {
+    try {
+      rows = state.lbRows = await cloud.fetchLeaderboard();
+    } catch (e) {
+      body.innerHTML = `<p class="hint">${t('lbOffline')}</p>`;
+      updateOnlineBadge();
+      return;
+    }
+  }
+  if (sel !== state.lbSel) return; // user already switched tab
+
+  const me = state.playerName;
+  if (sel === 'total') {
+    const byPlayer = new Map();
+    for (const r of rows) {
+      const a = byPlayer.get(r.player_name) || { sum: 0, gold: 0 };
+      a.sum += r.best_score;
+      if (r.best_stars === 3) a.gold++;
+      byPlayer.set(r.player_name, a);
+    }
+    const list = [...byPlayer.entries()].sort((a, b) => b[1].sum - a[1].sum).slice(0, 30);
+    body.innerHTML = list.length ? `<table class="lb-table">
+      <thead><tr><th>${t('th_rank')}</th><th>${t('th_player')}</th><th>${t('lbSum')}</th><th>${t('th_gold')}</th></tr></thead>
+      <tbody>${list.map(([name, a], i) => `
+        <tr class="${name === me ? 'me' : ''}"><td class="num">${i + 1}</td>
+        <td>${escapeHtml(name)}</td><td class="num">${a.sum}</td>
+        <td class="num">${a.gold ? '🏅'.repeat(Math.min(a.gold, 10)) : '—'}</td></tr>`).join('')}
+      </tbody></table>` : `<p class="hint">${t('lbEmpty')}</p>`;
+  } else {
+    const lvl = LEVELS.find(l => l.n === Number(sel));
+    const list = rows.filter(r => r.level_n === Number(sel))
+      .sort((a, b) => b.best_score - a.best_score || b.best_stars - a.best_stars)
+      .slice(0, 30);
+    body.innerHTML = `<p class="summary-level">${t('levelLabel', { n: lvl.n })} · ${escapeHtml(levelTitle(lvl))}</p>` +
+      (list.length ? `<table class="lb-table">
+      <thead><tr><th>${t('th_rank')}</th><th>${t('th_player')}</th><th>${t('th_best')}</th><th>★</th></tr></thead>
+      <tbody>${list.map((r, i) => `
+        <tr class="${r.player_name === me ? 'me' : ''}"><td class="num">${i + 1}</td>
+        <td>${escapeHtml(r.player_name)}</td><td class="num">${r.best_score}/${r.total}</td>
+        <td>${'★'.repeat(r.best_stars) || '—'}</td></tr>`).join('')}
+      </tbody></table>` : `<p class="hint">${t('lbEmpty')}</p>`);
+  }
+}
 $('btn-countries').addEventListener('click', () => { renderCountryList(); show('screen-countries'); });
 $('btn-countries-back').addEventListener('click', () => { renderMenu(); show('screen-menu'); });
 $('btn-stats').addEventListener('click', () => { renderStats(); show('screen-stats'); });
@@ -595,8 +835,10 @@ function commonSessionSave(s, { updateLevel = false } = {}) {
     rec.lastScore = s.correct;
     rec.highScore = Math.max(rec.highScore || 0, s.correct);
     rec.lastMissed = [...new Set(s.misses)];
+    p.dirty = { ...(p.dirty || {}), [s.levelN]: true };
   }
   store.persist();
+  if (updateLevel) syncDirty();
 }
 
 function starsFor(s) {
@@ -765,6 +1007,12 @@ applyStaticI18n();
 renderPlayers();
 const last = store.getLastPlayer();
 if (last) selectPlayer(last);
+
+// Probe the leaderboard backend; offline mode is fine, we retry on use.
+cloud.ping().then(ok => {
+  updateOnlineBadge();
+  if (ok) { refreshCloudPlayers(); syncDirty(); }
+});
 
 // Test hook for automated QA (harmless in production).
 window.__mapgame = {
