@@ -126,7 +126,14 @@ export async function adminWipe(secret) {
     method: 'POST',
     body: JSON.stringify({ secret }),
   }, 10000);
-  if (!r.ok) throw new Error('admin ' + r.status);
+  // 404 = the function has not been created in Supabase yet — surface it
+  // as its own case, distinct from "network down".
+  if (r.status === 404) return { ok: false, missing: true };
+  if (!r.ok) {
+    let message = '';
+    try { message = (await r.json()).message || ''; } catch (e) { /* no body */ }
+    return { ok: false, status: r.status, message };
+  }
   return r.json();
 }
 

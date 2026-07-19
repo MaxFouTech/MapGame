@@ -427,7 +427,13 @@ async function runAdminWipe() {
   try {
     const out = await cloud.adminWipe(secret);
     $('admin-pass').value = '';
-    if (!out.ok) { msg.textContent = t('adminBad'); return; }
+    if (!out.ok) {
+      if (out.missing) msg.textContent = t('adminMissing');
+      else if (out.error === 'unauthorized') msg.textContent = t('adminBad');
+      else msg.textContent = t('adminErr', { code: out.status || '?' }) +
+        (out.message ? ` — ${out.message}` : '');
+      return;
+    }
     store.wipeAllLocal();
     state.player = null;
     state.playerName = null;
