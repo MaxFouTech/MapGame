@@ -212,6 +212,15 @@ export class GlobeMap {
     this._animateTo(center, k, dur);
   }
 
+  // Screen-pixel position of a country's center, or null if it faces away.
+  screenPointOf(name) {
+    const f = this.byName.get(name);
+    if (!f) return null;
+    const ll = d3.geoCentroid(mainGeometry(f));
+    if (d3.geoDistance(ll, this._viewCenter()) >= Math.PI / 2) return null;
+    return this.projection(ll);
+  }
+
   isNeighbor(a, b) {
     return this.neighbors.get(a)?.has(b) || false;
   }

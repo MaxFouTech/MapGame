@@ -219,6 +219,13 @@ export class WorldMap {
     return f ? this.path.centroid(this._mainPolygon(f)) : null;
   }
 
+  // Screen-pixel position of a country's center (for particle effects).
+  screenPointOf(name) {
+    const c = this.centroidOf(name);
+    if (!c) return null;
+    return d3.zoomTransform(this.svg.node()).apply(c);
+  }
+
   isNeighbor(a, b) {
     return this.neighbors.get(a)?.has(b) || false;
   }

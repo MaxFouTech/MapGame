@@ -155,8 +155,7 @@ function renderMenu() {
     card.innerHTML = `
       <span class="level-num l${lvl.n}">${lvl.slam ? '👑' : lvl.n}</span>
       <span class="level-body">
-        <span class="level-title">${escapeHtml(levelTitle(lvl))}
-          <span class="diff">${'●'.repeat(lvl.diff || 1)}${'○'.repeat(5 - (lvl.diff || 1))}</span></span>
+        <span class="level-title">${escapeHtml(levelTitle(lvl))}</span>
         <span class="level-meta">${t('countriesCount', { n: total })} · ${t('statusCounts', { k: known, l: learning })}</span>
         <span class="level-foot">${starsHtml(rec.bestStars || 0)}
           <span class="prog-bar mini">
@@ -375,6 +374,47 @@ async function startReview() {
   nextQuestion();
 }
 
+const REDUCED_MOTION = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+// Small canvas confetti burst at (x, y) screen coordinates.
+function confettiBurst(x, y) {
+  if (REDUCED_MOTION) return;
+  const host = $('screen-game');
+  const canvas = document.createElement('canvas');
+  canvas.className = 'confetti';
+  canvas.width = host.clientWidth || window.innerWidth;
+  canvas.height = host.clientHeight || window.innerHeight;
+  host.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+  const colors = ['#f4b400', '#2e9e6b', '#2a7de1', '#e07b39', '#d85f74', '#9c55c9'];
+  const parts = Array.from({ length: 34 }, () => ({
+    x, y,
+    vx: (Math.random() - 0.5) * 8,
+    vy: -Math.random() * 7 - 3,
+    s: 4 + Math.random() * 4,
+    c: colors[Math.floor(Math.random() * colors.length)],
+    r: Math.random() * Math.PI,
+    vr: (Math.random() - 0.5) * 0.35,
+  }));
+  const t0 = performance.now();
+  requestAnimationFrame(function frame(now) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const fade = Math.max(0, 1 - (now - t0) / 1100);
+    ctx.globalAlpha = fade;
+    for (const p of parts) {
+      p.vy += 0.28; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.r);
+      ctx.fillStyle = p.c;
+      ctx.fillRect(-p.s / 2, -p.s / 2, p.s, p.s * 0.6);
+      ctx.restore();
+    }
+    if (fade > 0) requestAnimationFrame(frame);
+    else canvas.remove();
+  });
+}
+
 // Great-circle distance between two countries' main landmasses, in km.
 function distanceKm(a, b) {
   const fa = state.map.byName.get(a), fb = state.map.byName.get(b);
@@ -440,6 +480,8 @@ function onValidate(feature) {
     s.bestStreak = Math.max(s.bestStreak, s.streak);
     if (s.mode === 'training' && --s.needs[target] > 0) requeue(s.queue, target, 2);
     state.map.highlight(target, 'correct-flash');
+    const pt = state.map.screenPointOf(target);
+    confettiBurst(pt ? pt[0] : state.map.width / 2, pt ? pt[1] : state.map.height / 2);
     popFeedback('✓', s.streak >= 3 ? t('streakRow', { n: s.streak }) : '');
     store.persist();
     updateHud();
@@ -465,14 +507,25 @@ function handleMiss(clicked, target) {
   const failNote = failStreak >= 2
     ? `<div class="fail-streak">${t('missStreak', { n: failStreak })}</div>` : '';
   if (clicked != null) {
-    state.map.showCorrection(clicked, target);
     const km = distanceKm(clicked, target);
-    showFeedback(
+    const msg =
       `${nearMiss ? t('soClose') : t('notQuite')} ` +
       t('youClicked', { guess: escapeHtml(displayName(clicked)), target: escapeHtml(displayName(target)) }) +
       ` <span class="distance">${t('distanceAway', { d: km.toLocaleString(getLang() === 'fr' ? 'fr-FR' : 'en-US') })}</span>` +
       (nearMiss ? ` <span class="consolation">${t('nearMissBonus')}</span>` : '') +
-      failNote);
+      failNote;
+    // Shake the map (and buzz on mobile) first, then show the correction.
+    const shakeMs = REDUCED_MOTION ? 0 : 450;
+    if (shakeMs) {
+      $('map').classList.add('shake');
+      try { navigator.vibrate?.(90); } catch (e) { /* not available */ }
+    }
+    setTimeout(() => {
+      $('map').classList.remove('shake');
+      if (state.phase !== 'feedback' || !state.session) return; // session ended meanwhile
+      state.map.showCorrection(clicked, target);
+      showFeedback(msg);
+    }, shakeMs);
   } else {
     state.map.revealTarget(target);
     showFeedback(t('revealMsg', { target: escapeHtml(displayName(target)) }) + failNote);
@@ -557,9 +610,23 @@ function starsFor(s) {
 function summaryTiles(s) {
   const denom = s.mode === 'series' ? s.total : s.asked;
   return `<div class="stats-summary">
-      <div class="stat-tile"><b>${s.correct}/${denom}</b><span>${t('sum_found')}</span></div>
+      <div class="stat-tile"><b id="sum-found">0/${denom}</b><span>${t('sum_found')}</span></div>
       <div class="stat-tile"><b>${s.bestStreak}</b><span>${t('sum_bestStreak')}</span></div>
     </div>`;
+}
+
+// Count the "found" tile up from 0 while the stars pop in one by one.
+function animateSummaryCount(correct, denom, dur = 1000) {
+  const el = $('sum-found');
+  if (!el) return;
+  if (REDUCED_MOTION) { el.textContent = `${correct}/${denom}`; return; }
+  const t0 = performance.now();
+  requestAnimationFrame(function f(now) {
+    const p = Math.min(1, (now - t0) / dur);
+    const eased = 1 - Math.pow(1 - p, 2);
+    el.textContent = `${Math.round(eased * correct)}/${denom}`;
+    if (p < 1) requestAnimationFrame(f);
+  });
 }
 
 function missBadges(s) {
@@ -581,6 +648,7 @@ function openSummary(s, { title, stars = null, subtitle = '' }) {
       `<div class="hint">${t('starsHint')}</div>`;
   }
   $('summary-body').innerHTML = subtitle + summaryTiles(s) + missBadges(s);
+  animateSummaryCount(s.correct, s.mode === 'series' ? s.total : s.asked);
 
   const missed = [...new Set(s.misses)];
   const trainBtn = $('btn-training');

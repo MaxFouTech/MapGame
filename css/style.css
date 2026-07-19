@@ -133,7 +133,6 @@ h3 { margin: 22px 0 6px; }
 .level-num.l10 { background: linear-gradient(135deg, #e7b73a, #c98f0a); font-size: 1.15rem; }
 .badge.l10 { background: linear-gradient(135deg, #e7b73a, #c98f0a); }
 .level-title { color: var(--ink); }
-.diff { font-size: .62rem; color: #b8a44c; letter-spacing: .12em; vertical-align: 2px; white-space: nowrap; }
 .level-num {
   flex: none; width: 34px; height: 34px; border-radius: 10px;
   display: inline-flex; align-items: center; justify-content: center;
@@ -155,9 +154,10 @@ h3 { margin: 22px 0 6px; }
 .stars.big { font-size: 2.6rem; letter-spacing: .15em; }
 .summary-stars { text-align: center; margin: 6px 0 4px; }
 .summary-stars .hint { margin-top: 0; }
-.summary-stars .star.on { animation: star-pop .5s ease-out backwards; }
-.summary-stars .star.on:nth-child(2) { animation-delay: .2s; }
-.summary-stars .star.on:nth-child(3) { animation-delay: .4s; }
+/* Stars pop one by one while the found-count ticks up (~1s total). */
+.summary-stars .star.on { animation: star-pop .5s ease-out backwards; animation-delay: .15s; }
+.summary-stars .star.on:nth-child(2) { animation-delay: .5s; }
+.summary-stars .star.on:nth-child(3) { animation-delay: .85s; }
 @keyframes star-pop { from { opacity: 0; transform: scale(.2); } 70% { transform: scale(1.25); } to { opacity: 1; transform: scale(1); } }
 .summary-level { color: var(--ink-soft); margin: 2px 0 6px; }
 .summary-actions .btn.hidden { display: none !important; }
@@ -255,6 +255,18 @@ h3 { margin: 22px 0 6px; }
   100% { transform: scale(1); }
 }
 .feedback .distance { color: var(--ink-soft); }
+
+.confetti { position: absolute; inset: 0; pointer-events: none; z-index: 15; }
+
+#map.shake { animation: map-shake .45s ease; }
+@keyframes map-shake {
+  0%, 100% { transform: translate(0, 0); }
+  15% { transform: translate(-10px, 3px); }
+  30% { transform: translate(9px, -3px); }
+  45% { transform: translate(-7px, 2px); }
+  60% { transform: translate(5px, -2px); }
+  80% { transform: translate(-3px, 1px); }
+}
 @keyframes pulse { 50% { opacity: .55; } }
 
 .arrow-line { fill: none; stroke: #d8544a; stroke-linecap: round; }
