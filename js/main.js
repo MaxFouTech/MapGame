@@ -13,7 +13,6 @@ import { GlobeMap } from './globe.js';
 import { t, setLang, getLang } from './i18n.js';
 import * as cloud from './cloud.js';
 import { icon } from './icons.js';
-import * as bgGlobe from './bgglobe.js';
 
 const d3 = window.d3;
 const $ = id => document.getElementById(id);
@@ -91,14 +90,18 @@ document.querySelectorAll('.lang-switch button[data-lang]').forEach(b =>
 
 // ---------- screens ----------
 
-// Menu-style screens get the slowly rotating globe in the background.
-const BG_SCREENS = new Set(['screen-players', 'screen-menu', 'screen-stats',
-  'screen-countries', 'screen-leaderboard']);
-
 let worldPromise = null;
 function loadWorld() {
   worldPromise = worldPromise || fetch('data/countries-50m.json').then(r => r.json());
   return worldPromise;
+}
+
+// The single map/globe instance is a permanent background layer: veiled and
+// slowly spinning behind the menus (ambient), fully interactive in game.
+function applyAmbient() {
+  const ambient = state.currentScreen !== 'screen-game';
+  $('map').classList.toggle('ambient', ambient);
+  state.map?.setAmbient(ambient);
 }
 
 function show(id) {
@@ -106,11 +109,7 @@ function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   $(id).classList.add('active');
   state.currentScreen = id;
-  if (BG_SCREENS.has(id)) {
-    loadWorld().then(w => { if (BG_SCREENS.has(state.currentScreen)) bgGlobe.start(w); });
-  } else {
-    bgGlobe.stop();
-  }
+  applyAmbient();
 }
 
 // ---------- player screen (with PIN + cloud) ----------
@@ -122,8 +121,9 @@ function renderPlayers() {
   const list = $('player-list');
   list.innerHTML = '';
   const players = store.listPlayers();
+  $('pick-title').classList.toggle('hidden', !players.length && !state.cloudPlayers.length);
   if (!players.length && !state.cloudPlayers.length) {
-    list.innerHTML = `<p class="hint">${t('noPlayers')}</p>`;
+    list.innerHTML = '';
   }
   for (const name of players) {
     const p = store.getPlayer(name);
@@ -571,8 +571,15 @@ async function ensureMap() {
     onValidate: onValidate,
     labelFor: n => displayName(n),
     distLabel: km => `${km.toLocaleString(getLang() === 'fr' ? 'fr-FR' : 'en-US')} km`,
-  }, mode === 'globe' ? { rotate: bgGlobe.getRotation() } : undefined);
+    // Keep the play area below the fixed hud card.
+    topInset: () => {
+      if (state.currentScreen !== 'screen-game') return 0;
+      const el = $('main-card');
+      return el ? el.offsetHeight + 26 : 0;
+    },
+  });
   state.mapBuiltMode = mode;
+  applyAmbient();
   updateMapModeUi();
 }
 
@@ -604,15 +611,12 @@ function newSession(mode, extra = {}) {
     misses: [], ...extra };
 }
 
-// Enter the game screen; in 3D mode the background globe morphs into the
-// playable globe.
+// Enter the game screen: the ambient background becomes the playable board
+// (the veil fades out via CSS, the layout re-fits under the hud).
 async function enterGame() {
-  const morph = store.getMapMode() === 'globe' && !REDUCED_MOTION && bgGlobe.armMorph();
-  show('screen-game');
   await ensureMap();
+  show('screen-game');
   state.map.refit();
-  if (morph) bgGlobe.playMorph();
-  else bgGlobe.stop();
 }
 
 async function startSeries(levelN) {
@@ -908,10 +912,12 @@ function animateSummaryCount(correct, denom, dur = 1000) {
 
 function missBadges(s) {
   const missSet = [...new Set(s.misses)];
-  return missSet.length
-    ? `<h3>${t('toReview')}</h3><p class="miss-list">${missSet.map(n =>
-        `<span class="badge l${levelOf(n)}">${escapeHtml(displayName(n))}</span>`).join(' ')}</p>`
-    : `<p class="hint">${t('nothingToReview')}</p>`;
+  if (missSet.length) {
+    return `<h3>${t('toReview')}</h3><p class="miss-list">${missSet.map(n =>
+      `<span class="badge l${levelOf(n)}">${escapeHtml(displayName(n))}</span>`).join(' ')}</p>`;
+  }
+  // "Nothing to review" only means something if questions were answered.
+  return s.asked > 0 ? `<p class="hint">${t('nothingToReview')}</p>` : '';
 }
 
 function openSummary(s, { title, stars = null, subtitle = '' }) {
@@ -1039,6 +1045,10 @@ renderPlayers();
 const last = store.getLastPlayer();
 if (last) selectPlayer(last);
 else show('screen-players'); // starts the background globe
+
+// Build the shared map/globe right away — it is the background of every
+// screen (ambient) before being the game board.
+ensureMap().catch(e => console.warn('map init failed', e));
 
 // Probe the leaderboard backend; offline mode is fine, we retry on use.
 cloud.ping().then(ok => {

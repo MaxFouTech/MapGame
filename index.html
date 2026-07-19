@@ -11,6 +11,10 @@
 </head>
 <body>
 
+<!-- Permanent map/globe layer: ambient background behind the menus, the
+     playable board during a game. -->
+<div id="map"></div>
+
 <!-- ===== Player selection ===== -->
 <div id="screen-players" class="screen active">
   <div class="panel">
@@ -19,6 +23,7 @@
     </div>
     <h1 class="logo"><span class="logo-ico"></span>MapGame</h1>
     <p class="tagline" data-i18n="tagline"></p>
+    <h3 id="pick-title" class="section-title hidden" data-i18n="pickTitle"></h3>
     <div id="player-list" class="player-list"></div>
     <p id="cloud-players-title" class="hint hidden" data-i18n="cloudPlayers"></p>
     <div id="cloud-list" class="player-list"></div>
@@ -34,6 +39,8 @@
       <p id="pin-error" class="pin-error hidden"></p>
     </div>
 
+    <h3 id="create-title" class="section-title" data-i18n="orCreate"></h3>
+    <p class="hint" data-i18n="createHint"></p>
     <!-- Not a <form>: sandboxed embeds (artifact viewers) block form submission. -->
     <div class="new-player">
       <input id="new-player-name" type="text" maxlength="20" data-i18n-placeholder="placeholderName" autocomplete="off">
@@ -128,10 +135,8 @@
 
 <!-- ===== Game ===== -->
 <div id="screen-game" class="screen">
-  <div id="map"></div>
-
   <div class="hud hud-top">
-    <div class="hud-card main-card">
+    <div class="hud-card main-card" id="main-card">
       <div class="main-card-head">
         <div>
           <div class="prompt-label" id="prompt-label"></div>
@@ -139,11 +144,13 @@
         </div>
         <div class="prompt-tier" id="prompt-tier"></div>
       </div>
-      <div class="hud-counters" id="hud-counters"></div>
-      <div class="hud-progress" id="hud-progress">
-        <span id="hud-prog-ok"></span><span id="hud-prog-ko"></span>
+      <div class="mc-mid">
+        <div class="hud-counters" id="hud-counters"></div>
+        <div class="hud-progress" id="hud-progress">
+          <span id="hud-prog-ok"></span><span id="hud-prog-ko"></span>
+        </div>
+        <div class="hud-flags" id="hud-flags"></div>
       </div>
-      <div class="hud-flags" id="hud-flags"></div>
       <div class="hud-actions">
         <button id="btn-dontknow" class="btn small ghost"></button>
         <button id="btn-end" class="btn small ghost danger"></button>

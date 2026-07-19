@@ -37,13 +37,11 @@ export class GlobeMap {
       .attr('width', '100%').attr('height', '100%')
       .style('background', '#e9eef2');
 
-    this.base = Math.min(this.width, this.height) / 2 - 10;
     this.k = 1;
     this.projection = d3.geoOrthographic()
-      .translate([this.width / 2, this.height / 2])
-      .scale(this.base)
       .clipAngle(90)
       .rotate(this.opts.rotate || [-10, -20]);
+    this._applyLayout();
     this.path = d3.geoPath(this.projection);
 
     this.sphere = this.svg.append('path')
@@ -134,6 +132,50 @@ export class GlobeMap {
     });
 
     this._render();
+  }
+
+  // Fit the globe in the space below the hud (topInset) and above the hint.
+  _applyLayout() {
+    const top = this.cb.topInset ? this.cb.topInset() : 0;
+    this.base = Math.min(this.width, this.height - top) / 2 - 10;
+    this.projection
+      .translate([this.width / 2, top + (this.height - top) / 2])
+      .scale(this.base * this.k);
+  }
+
+  // Ambient mode: non-interactive slow spin used as the menu background.
+  setAmbient(on) {
+    this.ambient = on;
+    if (on) {
+      this.enabled = false;
+      this._startSpin();
+    } else {
+      this._stopSpin();
+    }
+    this.refit();
+  }
+
+  _startSpin() {
+    if (this._spin) return;
+    this._lastSpinT = 0;
+    const step = (t) => {
+      if (!this.ambient) { this._spin = null; return; }
+      if (!this._lastSpinT) this._lastSpinT = t;
+      const dt = t - this._lastSpinT;
+      if (dt > 40) { // ~25fps
+        const [l, p] = this.projection.rotate();
+        this.projection.rotate([l + dt * 0.004, p, 0]);
+        this._lastSpinT = t;
+        this._render();
+      }
+      this._spin = requestAnimationFrame(step);
+    };
+    this._spin = requestAnimationFrame(step);
+  }
+
+  _stopSpin() {
+    if (this._spin) cancelAnimationFrame(this._spin);
+    this._spin = null;
   }
 
   _scheduleRender() {
@@ -256,8 +298,7 @@ export class GlobeMap {
     this.width = el.clientWidth;
     this.height = el.clientHeight;
     this.svg.attr('viewBox', `0 0 ${this.width} ${this.height}`);
-    this.base = Math.min(this.width, this.height) / 2 - 10;
-    this.projection.translate([this.width / 2, this.height / 2]).scale(this.base * this.k);
+    this._applyLayout();
     this._render();
   }
 

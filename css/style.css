@@ -28,28 +28,26 @@ button { font: inherit; cursor: pointer; color: inherit; }
 /* Inline SVG icons inherit the text color of their context. */
 .ico { width: 1.1em; height: 1.1em; flex: none; display: inline-block; vertical-align: -0.18em; }
 
-/* Decorative rotating globe behind menu screens. */
-#bg-globe {
-  position: fixed; inset: 0; z-index: 0; pointer-events: none;
-  width: 100vw; height: 100vh;
-  opacity: .8; filter: saturate(.8);
+/* The single map/globe: fixed background layer for every screen. In
+   ambient mode (menus) it is veiled and non-interactive; in game the veil
+   fades out and it becomes the board. */
+#map { position: fixed; inset: 0; z-index: 0; }
+#map::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: rgba(240, 244, 247, .58);
+  opacity: 0; transition: opacity .7s ease;
 }
-#bg-globe.morphing {
-  z-index: 35;
-  transform-origin: 72% 42%;
-  animation: bg-morph .8s ease forwards;
-}
-@keyframes bg-morph {
-  60% { opacity: .7; }
-  100% { transform: translate(var(--mx), var(--my)) scale(var(--ms)); opacity: 0; }
-}
+#map.ambient { pointer-events: none; }
+#map.ambient::after { opacity: 1; }
 .screen { position: relative; z-index: 1; }
 
 /* 100dvh tracks the *visible* viewport on mobile (URL bar shown/hidden),
    unlike 100vh which can leave the top or bottom behind browser chrome. */
 .screen { display: none; height: 100vh; height: 100dvh; }
 .screen.active { display: flex; align-items: center; justify-content: center; }
-#screen-game.active { display: block; }
+/* The game screen is a transparent layer above the map: it must let
+   pointer events through to the board (its hud re-enables them). */
+#screen-game.active { display: block; pointer-events: none; }
 
 /* The summary is an overlay above the game so the missed countries stay
    visible (highlighted) on the map behind the panel. */
@@ -62,7 +60,9 @@ body.summary-open .hud, body.summary-open .zoom-hint,
 body.summary-open .feedback, body.summary-open .points-popup { display: none !important; }
 
 .panel {
-  background: var(--card);
+  background: rgba(255, 255, 255, .84);
+  backdrop-filter: blur(10px) saturate(1.15);
+  -webkit-backdrop-filter: blur(10px) saturate(1.15);
   border-radius: 18px;
   box-shadow: 0 12px 40px rgba(20, 40, 60, .14);
   padding: 36px 42px;
@@ -116,6 +116,7 @@ h3 { margin: 22px 0 6px; }
 .menu-head-right { display: flex; align-items: center; gap: 10px; }
 
 /* ===== players ===== */
+.section-title { margin: 14px 0 4px; font-size: 1rem; text-align: left; }
 .player-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
 .player-row {
   display: flex; justify-content: space-between; align-items: center;
@@ -129,6 +130,7 @@ h3 { margin: 22px 0 6px; }
 .new-player input {
   flex: 1 1 150px; padding: 10px 14px; border: 2px solid #e2e9ee; border-radius: 10px;
   font: inherit; outline: none; min-width: 0;
+  background: #fff; color: var(--ink);
 }
 .new-player input:focus { border-color: var(--accent); }
 .new-player .btn { flex: 1 0 auto; }
@@ -144,6 +146,7 @@ h3 { margin: 22px 0 6px; }
 #new-player-pin, #pin-input {
   flex: 1 1 120px; max-width: 190px; padding: 10px 14px;
   border: 2px solid #e2e9ee; border-radius: 10px; font: inherit; outline: none;
+  background: #fff; color: var(--ink);
 }
 #new-player-pin:focus, #pin-input:focus { border-color: var(--accent); }
 .player-row.cloud .player-row-meta::before { content: '☁️ '; }
@@ -307,7 +310,6 @@ h3 { margin: 22px 0 6px; }
 .evo-legend.mastered { fill: var(--good); }
 
 /* ===== game ===== */
-#map { position: absolute; inset: 0; }
 /* Give ALL touch gestures on the map to d3 (pan, pinch); without this the
    browser swallows one-finger drags after a pinch zoom. */
 #map svg { display: block; touch-action: none; }
@@ -361,28 +363,29 @@ h3 { margin: 22px 0 6px; }
    space between their cards/buttons. */
 .hud { position: absolute; z-index: 10; display: flex; gap: 12px; pointer-events: none; }
 .hud-card, .hudbtn { pointer-events: auto; }
+.hud-top { justify-content: center; }
 .hud-top {
-  top: max(14px, env(safe-area-inset-top));
-  left: max(14px, env(safe-area-inset-left));
-  right: max(14px, env(safe-area-inset-right));
-  justify-content: space-between; align-items: flex-start;
-}
-.hud-bottom {
-  bottom: max(14px, env(safe-area-inset-bottom));
-  left: max(14px, env(safe-area-inset-left));
+  top: max(10px, env(safe-area-inset-top));
+  left: max(10px, env(safe-area-inset-left));
+  right: max(10px, env(safe-area-inset-right));
+  align-items: flex-start;
 }
 .hud-card {
-  background: rgba(255, 255, 255, .92); backdrop-filter: blur(6px);
-  border-radius: 14px; padding: 12px 18px;
+  background: rgba(255, 255, 255, .88);
+  backdrop-filter: blur(8px) saturate(1.1);
+  -webkit-backdrop-filter: blur(8px) saturate(1.1);
+  border-radius: 14px; padding: 10px 16px;
   box-shadow: 0 6px 24px rgba(20, 40, 60, .18);
 }
-.prompt-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); }
-.prompt-country { font-size: 1.45rem; font-weight: 800; line-height: 1.15; }
-.main-card { min-width: 250px; max-width: min(330px, 88vw); }
-.main-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-.prompt-tier { margin-top: 3px; }
+.prompt-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); }
+.prompt-country { font-size: 1.35rem; font-weight: 800; line-height: 1.12; }
+/* Desktop: one horizontal card centered at the top. */
+.main-card { display: flex; align-items: center; gap: 18px; max-width: min(680px, 94vw); }
+.main-card-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.mc-mid { display: flex; flex-direction: column; min-width: 170px; flex: 1; }
+.prompt-tier { flex: none; }
 .hud-counters {
-  display: flex; align-items: center; gap: 12px; margin-top: 8px;
+  display: flex; align-items: center; gap: 12px;
   font-weight: 700; font-variant-numeric: tabular-nums;
 }
 .hud-counters .ico { width: 1em; height: 1em; }
@@ -400,8 +403,8 @@ h3 { margin: 22px 0 6px; }
 .hud-flags span { display: inline-flex; align-items: center; gap: 4px; }
 .flag-perfect { color: var(--good); }
 .flag-streak { color: #d9631e; }
-.hud-actions { display: flex; gap: 8px; margin-top: 9px; }
-.hud-actions .btn { flex: 1; white-space: nowrap; padding: 6px 8px; font-size: .84rem; }
+.hud-actions { display: flex; gap: 8px; flex: none; }
+.hud-actions .btn { white-space: nowrap; padding: 6px 10px; font-size: .82rem; }
 
 .zoom-hint {
   position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%);
@@ -438,7 +441,16 @@ h3 { margin: 22px 0 6px; }
 .hidden { display: none !important; }
 
 @media (max-width: 640px) {
-  .prompt-country { font-size: 1.15rem; }
+  .prompt-country { font-size: 1.05rem; }
+  .main-card { flex-direction: column; align-items: stretch; gap: 6px; width: min(94vw, 380px); padding: 8px 12px; }
+  .main-card-head { justify-content: space-between; }
+  .mc-mid { min-width: 0; }
+  .hud-counters { font-size: .9rem; gap: 10px; }
+  .hud-actions { margin-top: 2px; }
+  .hud-actions .btn { flex: 1; padding: 5px 8px; font-size: .78rem; }
+  /* Menu header: one row per element on small screens. */
+  .menu-head { flex-direction: column; align-items: stretch; gap: 8px; }
+  .menu-head-right { flex-wrap: wrap; row-gap: 6px; }
 }
 
 /* Compact panels and level cards on small screens (portrait or landscape)
@@ -472,24 +484,15 @@ h3 { margin: 22px 0 6px; }
     left: max(8px, env(safe-area-inset-left));
     right: max(8px, env(safe-area-inset-right));
   }
-  .hud-bottom {
-    bottom: max(8px, env(safe-area-inset-bottom));
-    left: max(8px, env(safe-area-inset-left));
-    gap: 8px;
-  }
-  .hud-card { padding: 7px 12px; border-radius: 10px; }
-  .prompt-label { font-size: .62rem; }
-  .prompt-country { font-size: 1.05rem; }
-  .prompt-tier .badge { font-size: .66rem; }
-  .score-num { font-size: 1.05rem; }
-  .score-unit { font-size: .68rem; }
-  .perfect-row { font-size: .72rem; }
-  .streak-row { font-size: .74rem; }
-  .qcount-row { font-size: .7rem; }
-  .hudbtn { padding: 6px 11px; font-size: .8rem; border-radius: 8px; }
-  .zoom-hint { bottom: 48px; font-size: .74rem; padding: 5px 12px; }
-  .feedback { padding: 9px 14px; font-size: .85rem; gap: 10px; }
-  .feedback .btn { padding: 7px 12px; font-size: .85rem; }
+  .hud-card { padding: 6px 10px; border-radius: 10px; }
+  .main-card { gap: 12px; }
+  .prompt-label { display: none; }
+  .prompt-country { font-size: 1rem; }
+  .prompt-tier .badge { font-size: .64rem; }
+  .hud-counters { font-size: .82rem; gap: 8px; }
+  .hud-flags { display: none; }
+  .hud-actions .btn { padding: 4px 8px; font-size: .72rem; }
+  .zoom-hint { bottom: max(10px, env(safe-area-inset-bottom)); font-size: .74rem; padding: 5px 12px; }
   .points-popup { top: 76px; }
   .points-popup .pp-main { font-size: 1.6rem; }
 }

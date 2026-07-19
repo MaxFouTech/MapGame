@@ -210,9 +210,17 @@ export class WorldMap {
   }
 
   _fitProjection() {
+    const top = 4 + (this.cb.topInset ? this.cb.topInset() : 0);
     this.projection.fitExtent(
-      [[4, 4], [this.width - 4, this.height - 4]],
+      [[4, top], [this.width - 4, this.height - 4]],
       { type: 'FeatureCollection', features: this.features });
+  }
+
+  // Ambient mode: static muted background behind the menus.
+  setAmbient(on) {
+    this.ambient = on;
+    if (on) this.enabled = false;
+    this.refit();
   }
 
   refit() {
