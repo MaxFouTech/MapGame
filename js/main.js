@@ -8,7 +8,7 @@
 import { LEVELS, PLAYABLE, displayName, levelOf, levelTitle } from './countries.js';
 import * as store from './storage.js';
 import * as sched from './scheduler.js';
-import { WorldMap } from './map.js';
+import { WorldMap, mainGeometry } from './map.js';
 import { GlobeMap } from './globe.js';
 import { t, setLang, getLang } from './i18n.js';
 
@@ -59,7 +59,9 @@ function applyStaticI18n() {
   $('btn-next').textContent = t('next');
   updateMapModeUi();
   document.documentElement.lang = getLang();
-  document.querySelectorAll('.lang-switch button').forEach(b =>
+  // [data-lang] scope: the 2D/3D switch shares the .lang-switch styling
+  // but must not be touched by the language logic.
+  document.querySelectorAll('.lang-switch button[data-lang]').forEach(b =>
     b.classList.toggle('on', b.dataset.lang === getLang()));
 }
 
@@ -73,7 +75,7 @@ function switchLang(l) {
   if ($('screen-countries').classList.contains('active')) renderCountryList();
 }
 
-document.querySelectorAll('.lang-switch button').forEach(b =>
+document.querySelectorAll('.lang-switch button[data-lang]').forEach(b =>
   b.addEventListener('click', () => switchLang(b.dataset.lang)));
 
 // ---------- screens ----------
@@ -153,12 +155,13 @@ function renderMenu() {
     card.innerHTML = `
       <span class="level-num l${lvl.n}">${lvl.slam ? '👑' : lvl.n}</span>
       <span class="level-body">
-        <span class="level-title">${escapeHtml(levelTitle(lvl))}</span>
+        <span class="level-title">${escapeHtml(levelTitle(lvl))}
+          <span class="diff">${'●'.repeat(lvl.diff || 1)}${'○'.repeat(5 - (lvl.diff || 1))}</span></span>
         <span class="level-meta">${t('countriesCount', { n: total })} · ${t('statusCounts', { k: known, l: learning })}</span>
         <span class="level-foot">${starsHtml(rec.bestStars || 0)}
           <span class="prog-bar mini">
-            <span class="prog-fill l${Math.min(lvl.n, 8)}" style="width:${100 * known / total}%"></span>
-            <span class="prog-fill l${Math.min(lvl.n, 8)} soft" style="width:${100 * learning / total}%"></span>
+            <span class="prog-fill l${Math.min(lvl.n, 9)}" style="width:${100 * known / total}%"></span>
+            <span class="prog-fill l${Math.min(lvl.n, 9)} soft" style="width:${100 * learning / total}%"></span>
           </span>
         </span>
         ${scores}
@@ -372,6 +375,14 @@ async function startReview() {
   nextQuestion();
 }
 
+// Great-circle distance between two countries' main landmasses, in km.
+function distanceKm(a, b) {
+  const fa = state.map.byName.get(a), fb = state.map.byName.get(b);
+  if (!fa || !fb) return 0;
+  return Math.round(d3.geoDistance(
+    d3.geoCentroid(mainGeometry(fa)), d3.geoCentroid(mainGeometry(fb))) * 6371);
+}
+
 // Insert back into the queue a few positions ahead (not immediately next).
 function requeue(queue, name, minAhead = 2) {
   const pos = Math.min(queue.length, minAhead + Math.floor(Math.random() * 3));
@@ -455,9 +466,11 @@ function handleMiss(clicked, target) {
     ? `<div class="fail-streak">${t('missStreak', { n: failStreak })}</div>` : '';
   if (clicked != null) {
     state.map.showCorrection(clicked, target);
+    const km = distanceKm(clicked, target);
     showFeedback(
       `${nearMiss ? t('soClose') : t('notQuite')} ` +
       t('youClicked', { guess: escapeHtml(displayName(clicked)), target: escapeHtml(displayName(target)) }) +
+      ` <span class="distance">${t('distanceAway', { d: km.toLocaleString(getLang() === 'fr' ? 'fr-FR' : 'en-US') })}</span>` +
       (nearMiss ? ` <span class="consolation">${t('nearMissBonus')}</span>` : '') +
       failNote);
   } else {

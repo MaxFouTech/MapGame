@@ -11,6 +11,8 @@
   --bad: #d8544a;
   --l1: #2e9e6b; --l2: #2a7de1; --l3: #6f63d2; --l4: #9c55c9;
   --l5: #d9a520; --l6: #e07b39; --l7: #d85f74; --l8: #d8544a;
+  --l9: #8a6a52;
+  color-scheme: light; /* keep UA form controls light even in dark mode */
 }
 html, body { height: 100%; }
 body {
@@ -19,7 +21,9 @@ body {
   background: var(--bg);
   overflow: hidden;
 }
-button { font: inherit; cursor: pointer; }
+/* Buttons must inherit the text color: the UA default (buttontext) turns
+   white under a dark color-scheme and made card titles invisible. */
+button { font: inherit; cursor: pointer; color: inherit; }
 
 /* 100dvh tracks the *visible* viewport on mobile (URL bar shown/hidden),
    unlike 100vh which can leave the top or bottom behind browser chrome. */
@@ -126,8 +130,10 @@ h3 { margin: 22px 0 6px; }
 .level-card.gold:hover { border-color: #caa21f; }
 .level-scores { font-size: .78rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 .level-card.gold .level-scores, .level-card.gold .level-meta { color: #8a6d1a; }
-.level-num.l9 { background: linear-gradient(135deg, #e7b73a, #c98f0a); font-size: 1.15rem; }
-.badge.l9 { background: linear-gradient(135deg, #e7b73a, #c98f0a); }
+.level-num.l10 { background: linear-gradient(135deg, #e7b73a, #c98f0a); font-size: 1.15rem; }
+.badge.l10 { background: linear-gradient(135deg, #e7b73a, #c98f0a); }
+.level-title { color: var(--ink); }
+.diff { font-size: .62rem; color: #b8a44c; letter-spacing: .12em; vertical-align: 2px; white-space: nowrap; }
 .level-num {
   flex: none; width: 34px; height: 34px; border-radius: 10px;
   display: inline-flex; align-items: center; justify-content: center;
@@ -137,6 +143,7 @@ h3 { margin: 22px 0 6px; }
 .level-num.l3 { background: var(--l3); } .level-num.l4 { background: var(--l4); }
 .level-num.l5 { background: var(--l5); } .level-num.l6 { background: var(--l6); }
 .level-num.l7 { background: var(--l7); } .level-num.l8 { background: var(--l8); }
+.level-num.l9 { background: var(--l9); }
 .level-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
 .level-title { font-weight: 700; line-height: 1.15; }
 .level-meta { font-size: .78rem; color: var(--ink-soft); }
@@ -163,6 +170,7 @@ h3 { margin: 22px 0 6px; }
 .prog-fill.l3 { background: var(--l3); } .prog-fill.l4 { background: var(--l4); }
 .prog-fill.l5 { background: var(--l5); } .prog-fill.l6 { background: var(--l6); }
 .prog-fill.l7 { background: var(--l7); } .prog-fill.l8 { background: var(--l8); }
+.prog-fill.l9 { background: var(--l9); }
 
 /* ===== country list ===== */
 .country-legend { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
@@ -196,6 +204,7 @@ h3 { margin: 22px 0 6px; }
 .badge.l3 { background: var(--l3); } .badge.l4 { background: var(--l4); }
 .badge.l5 { background: var(--l5); } .badge.l6 { background: var(--l6); }
 .badge.l7 { background: var(--l7); } .badge.l8 { background: var(--l8); }
+.badge.l9 { background: var(--l9); }
 
 .weak-list { margin: 8px 0 8px 22px; }
 .weak-list li { margin: 6px 0; }
@@ -228,10 +237,24 @@ h3 { margin: 22px 0 6px; }
 .country:hover { filter: brightness(.92); }
 .country.territory { cursor: default; }
 
-.country.correct-flash { fill: var(--good) !important; animation: pulse .5s 2; }
-.country.wrong-flash { fill: var(--bad) !important; }
-.country.target-reveal { fill: var(--good) !important; animation: pulse .8s 3; }
+/* Scale pops animate around each country's own center. */
+.country { transform-box: fill-box; transform-origin: center; }
+.country.correct-flash { fill: var(--good) !important; animation: found-pop .55s ease-out 1; }
+.country.wrong-flash { fill: var(--bad) !important; animation: wrong-pop .55s ease-out 1; }
+.country.target-reveal { fill: var(--good) !important; animation: pulse .8s 3, found-pop .6s ease-out 1; }
 .country.missed-reveal { fill: var(--bad) !important; animation: pulse 1.6s infinite; }
+@keyframes found-pop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.22); }
+  100% { transform: scale(1); }
+}
+@keyframes wrong-pop {
+  0% { transform: scale(1); }
+  25% { transform: scale(1.15); }
+  55% { transform: scale(.95); }
+  100% { transform: scale(1); }
+}
+.feedback .distance { color: var(--ink-soft); }
 @keyframes pulse { 50% { opacity: .55; } }
 
 .arrow-line { fill: none; stroke: #d8544a; stroke-linecap: round; }

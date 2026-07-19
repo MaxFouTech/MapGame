@@ -6,11 +6,19 @@ const KEY = 'mapgame.v1';
 let db = load();
 
 function load() {
+  let d = { players: {}, lastPlayer: null };
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) d = JSON.parse(raw);
   } catch (e) { /* corrupted storage — start fresh */ }
-  return { players: {}, lastPlayer: null };
+  // Level definitions were reorganized (geographic clusters, v2): per-level
+  // stars/scores no longer match, so reset them once. Per-country knowledge
+  // records are untouched.
+  if (!d.levelsV2) {
+    for (const p of Object.values(d.players || {})) p.levels = {};
+    d.levelsV2 = true;
+  }
+  return d;
 }
 
 function save() {
@@ -73,7 +81,7 @@ export function setStoredLang(l) {
 }
 
 export function getMapMode() {
-  return db.mapMode === 'globe' ? 'globe' : '2d';
+  return db.mapMode === '2d' ? '2d' : 'globe'; // globe is the default
 }
 
 export function setMapMode(m) {

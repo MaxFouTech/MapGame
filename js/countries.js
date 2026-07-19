@@ -7,58 +7,78 @@
 
 import { getLang } from './i18n.js';
 
+// Levels are geographic clusters ordered by difficulty: confusions come
+// from neighbours (Niger/Nigeria, Slovakia/Slovenia…), so a cluster learned
+// as one block sticks better than the same countries spread across levels.
+// `diff` is the 1-5 difficulty shown on the level card.
 export const LEVELS = [
   {
-    n: 1, en: 'World Giants', fr: 'Les géants du monde',
+    n: 1, en: 'World Giants', fr: 'Les géants du monde', diff: 1,
     countries: [
       'United States of America', 'Canada', 'Mexico', 'Brazil', 'Argentina',
-      'Russia', 'China', 'India', 'Australia', 'Egypt', 'South Africa',
-      'France', 'Germany', 'Spain', 'Italy', 'United Kingdom', 'Japan',
-      'Turkey', 'Saudi Arabia', 'Indonesia',
+      'Russia', 'China', 'India', 'Australia', 'New Zealand', 'Egypt',
+      'South Africa', 'France', 'Germany', 'Spain', 'Italy',
+      'United Kingdom', 'Japan', 'Turkey', 'Saudi Arabia', 'Indonesia',
     ],
   },
   {
-    n: 2, en: 'Tour of Europe', fr: "Tour d'Europe",
+    n: 2, en: 'Western & Northern Europe', fr: "L'Europe de l'Ouest et du Nord", diff: 1,
     countries: [
       'Portugal', 'Ireland', 'Iceland', 'Norway', 'Sweden', 'Finland',
-      'Denmark', 'Netherlands', 'Belgium', 'Switzerland', 'Austria',
-      'Poland', 'Greece', 'Ukraine', 'Czechia', 'Slovakia', 'Hungary',
-      'Romania', 'Bulgaria', 'Croatia', 'Serbia', 'Belarus', 'Lithuania',
-      'Latvia', 'Estonia',
+      'Denmark', 'Netherlands', 'Belgium', 'Luxembourg', 'Switzerland',
+      'Austria', 'Malta',
     ],
   },
   {
-    n: 3, en: 'Asia & Middle East', fr: 'Asie et Moyen-Orient',
+    n: 3, en: 'Central Europe, Baltics & Balkans', fr: 'Europe centrale, Baltes et Balkans', diff: 3,
     countries: [
-      'South Korea', 'North Korea', 'Vietnam', 'Thailand', 'Philippines',
-      'Pakistan', 'Iran', 'Israel', 'Mongolia', 'New Zealand', 'Kazakhstan',
-      'Afghanistan', 'Iraq', 'Malaysia', 'Myanmar', 'Bangladesh',
-      'Sri Lanka', 'Nepal', 'Cambodia', 'Laos', 'Syria', 'Jordan', 'Yemen',
-      'Oman', 'United Arab Emirates', 'Qatar', 'Kuwait',
+      'Poland', 'Czechia', 'Slovakia', 'Hungary', 'Slovenia', 'Croatia',
+      'Bosnia and Herz.', 'Serbia', 'Montenegro', 'Macedonia', 'Albania',
+      'Kosovo', 'Greece', 'Bulgaria', 'Romania', 'Moldova', 'Ukraine',
+      'Belarus', 'Lithuania', 'Latvia', 'Estonia', 'Cyprus',
     ],
   },
   {
-    n: 4, en: 'Across the Americas', fr: 'Cap sur les Amériques',
+    n: 4, en: 'Latin America & Caribbean', fr: 'Amérique latine et Caraïbes', diff: 2,
     countries: [
-      'Colombia', 'Venezuela', 'Peru', 'Chile', 'Cuba', 'Bolivia',
-      'Ecuador', 'Paraguay', 'Uruguay', 'Panama', 'Costa Rica',
-      'Guatemala', 'Honduras', 'Nicaragua', 'Dominican Rep.', 'Haiti',
-      'Jamaica', 'Belize', 'El Salvador', 'Guyana', 'Suriname',
-      'Trinidad and Tobago', 'Bahamas',
+      'Colombia', 'Venezuela', 'Guyana', 'Suriname', 'Ecuador', 'Peru',
+      'Bolivia', 'Chile', 'Paraguay', 'Uruguay', 'Cuba', 'Haiti',
+      'Dominican Rep.', 'Jamaica', 'Bahamas', 'Trinidad and Tobago',
+      'Belize', 'Guatemala', 'Honduras', 'El Salvador', 'Nicaragua',
+      'Costa Rica', 'Panama',
     ],
   },
   {
-    n: 5, en: 'The Great African Crossing', fr: "La grande traversée de l'Afrique",
+    n: 5, en: 'South & East Asia', fr: "L'Asie du Sud et de l'Est", diff: 3,
     countries: [
-      'Morocco', 'Algeria', 'Libya', 'Madagascar', 'Ethiopia', 'Kenya',
-      'Nigeria', 'Tunisia', 'Mali', 'Niger', 'Chad', 'Sudan', 'Somalia',
-      'Tanzania', 'Mozambique', 'Angola', 'Namibia', 'Botswana',
+      'Mongolia', 'North Korea', 'South Korea', 'Taiwan', 'Philippines',
+      'Vietnam', 'Laos', 'Cambodia', 'Thailand', 'Myanmar', 'Malaysia',
+      'Singapore', 'Brunei', 'Timor-Leste', 'Papua New Guinea',
+      'Bangladesh', 'Sri Lanka', 'Nepal', 'Bhutan', 'Pakistan',
+    ],
+  },
+  {
+    n: 6, en: 'Middle East, Caucasus & Central Asia', fr: 'Moyen-Orient, Caucase et Asie centrale', diff: 4,
+    countries: [
+      'Iran', 'Iraq', 'Syria', 'Lebanon', 'Israel', 'Palestine', 'Jordan',
+      'Yemen', 'Oman', 'United Arab Emirates', 'Qatar', 'Bahrain',
+      'Kuwait', 'Georgia', 'Armenia', 'Azerbaijan', 'Kazakhstan',
+      'Uzbekistan', 'Turkmenistan', 'Kyrgyzstan', 'Tajikistan',
+      'Afghanistan',
+    ],
+  },
+  {
+    n: 7, en: 'Africa: The Landmarks', fr: "L'Afrique des repères", diff: 3,
+    countries: [
+      'Morocco', 'Algeria', 'Tunisia', 'Libya', 'W. Sahara', 'Ethiopia',
+      'Kenya', 'Nigeria', 'Madagascar', 'Mali', 'Niger', 'Chad', 'Sudan',
+      'Somalia', 'Tanzania', 'Mozambique', 'Angola', 'Namibia', 'Botswana',
       'Zimbabwe', 'Zambia', 'Ghana', 'Senegal', 'Cameroon',
       'Dem. Rep. Congo',
     ],
   },
   {
-    n: 6, en: 'Africa in Detail', fr: "L'Afrique en détail",
+    n: 8, en: 'Africa in Detail', fr: "L'Afrique en détail", diff: 4,
     countries: [
       'Benin', 'Togo', 'Burkina Faso', "Côte d'Ivoire", 'Guinea',
       'Sierra Leone', 'Liberia', 'Mauritania', 'Gabon', 'Congo',
@@ -68,25 +88,14 @@ export const LEVELS = [
     ],
   },
   {
-    n: 7, en: 'Small Countries, Big Challenge', fr: 'Petits pays, grands défis',
-    countries: [
-      'Albania', 'Bosnia and Herz.', 'Macedonia', 'Montenegro', 'Slovenia',
-      'Moldova', 'Kosovo', 'Cyprus', 'Malta', 'Luxembourg', 'Uzbekistan',
-      'Azerbaijan', 'Georgia', 'Armenia', 'Kyrgyzstan', 'Tajikistan',
-      'Turkmenistan', 'Bhutan', 'Taiwan', 'Brunei', 'Timor-Leste',
-      'Papua New Guinea', 'Singapore', 'Lebanon', 'Bahrain', 'Fiji',
-    ],
-  },
-  {
-    n: 8, en: 'Microstates & Ends of the Earth', fr: 'Micro-États et bouts du monde',
+    n: 9, en: 'Microstates & Islands of the World', fr: 'Micro-États et îles du monde', diff: 5,
     countries: [
       'Andorra', 'Liechtenstein', 'Monaco', 'San Marino', 'Vatican',
       'Comoros', 'Cabo Verde', 'São Tomé and Principe', 'Seychelles',
-      'Mauritius', 'Maldives', 'Solomon Is.', 'Vanuatu', 'Samoa', 'Tonga',
-      'Kiribati', 'Micronesia', 'Marshall Is.', 'Palau', 'Nauru',
-      'St. Kitts and Nevis', 'Antigua and Barb.', 'Dominica',
+      'Mauritius', 'Maldives', 'Solomon Is.', 'Vanuatu', 'Fiji', 'Samoa',
+      'Tonga', 'Kiribati', 'Micronesia', 'Marshall Is.', 'Palau', 'Nauru',
+      'Tuvalu', 'St. Kitts and Nevis', 'Antigua and Barb.', 'Dominica',
       'Saint Lucia', 'St. Vin. and Gren.', 'Grenada', 'Barbados',
-      'W. Sahara', 'Palestine',
     ],
   },
 ];
@@ -96,9 +105,9 @@ for (const lvl of LEVELS) for (const c of lvl.countries) NAME_TO_LEVEL.set(c, lv
 
 // Grand Slam: a bonus series over every playable country. It is a playable
 // level but does not own any country — levelOf() keeps returning the
-// thematic level 1-8.
+// thematic level 1-9.
 LEVELS.push({
-  n: 9, slam: true, en: 'Grand Slam', fr: 'Grand Chelem',
+  n: 10, slam: true, en: 'Grand Slam', fr: 'Grand Chelem', diff: 5,
   countries: [...NAME_TO_LEVEL.keys()],
 });
 
@@ -211,6 +220,7 @@ const FR_NAMES = {
   'St. Vin. and Gren.': 'Saint-Vincent-et-les-Grenadines',
   'Grenada': 'Grenade', 'Barbados': 'Barbade',
   'W. Sahara': 'Sahara occidental', 'Palestine': 'Palestine',
+  'Tuvalu': 'Tuvalu',
   // Common non-playable territories (can be clicked as wrong guesses):
   'Greenland': 'Groenland', 'Puerto Rico': 'Porto Rico',
   'New Caledonia': 'Nouvelle-Calédonie', 'Fr. Polynesia': 'Polynésie française',

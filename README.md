@@ -21,10 +21,12 @@ because the app fetches the map data.)
 1. **Pick or create a player** — progress is saved per player in the browser
    (localStorage). The interface is available in **English and French**
    (FR/EN toggle, country names included).
-2. **Pick a level** — 8 themed levels of 20-30 countries, ordered by
-   difficulty (from *World Giants* to *Microstates & Ends of the Earth*),
-   plus a **Grand Slam** level covering all 197 countries.
-   A series asks every country of the level once, in random order.
+2. **Pick a level** — 9 geographic-cluster levels (13-29 countries each,
+   difficulty shown as dots on the card), from *World Giants* to
+   *Microstates & Islands of the World*, plus a **Grand Slam** level
+   covering all 198 countries. Clusters keep confusable neighbours
+   together (Balkans, Gulf, Central Asia…) so they are learned as one
+   block. A series asks every country of the level once, in random order.
 3. **Find the country**: click it on the map. You manage the view yourself —
    scroll to zoom, drag to pan. Every click on a country is an answer.
 4. **Mistakes teach**: on a wrong answer the map zooms out to show both
@@ -44,12 +46,6 @@ because the app fetches the map data.)
    countries across all levels.
 8. **All countries** — a browsable list of every country grouped by level,
    colored by your knowledge status.
-
-## Scoring
-
-- Base points scale with difficulty tier (50 → 140).
-- Speed bonus for answering within 12 seconds.
-- Streak multiplier up to ×2 for consecutive correct answers.
 
 ## The training strategy
 
@@ -83,6 +79,7 @@ the priority list of countries to reinforce, and per-country accuracy.
   (Natural Earth), vendored in `data/`.
 - Countries are colored by greedy graph coloring so no two neighbouring or
   nearby countries share a color.
-- ~197 playable countries hand-curated into 5 difficulty tiers
-  (`js/countries.js`); non-sovereign territories are drawn muted and are
+- 198 playable countries hand-curated into 9 geographic-cluster levels
+  (`js/countries.js`); Tuvalu is grafted from the 10m dataset
+  (`js/extras.js`); non-sovereign territories are drawn muted and are
   never asked.

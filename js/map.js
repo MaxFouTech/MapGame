@@ -12,11 +12,15 @@ const PALETTE = [
 const NON_PLAYABLE = '#d9d5cc';
 const OCEAN = '#cfe0ea';
 
+import { EXTRA_FEATURES } from './extras.js';
+
 // Shared between the 2D map and the 3D globe.
 export function buildGeoData(world) {
   const geo = topojson.feature(world, world.objects.countries);
-  // Antarctica takes a lot of space and is never asked.
-  const features = geo.features.filter(f => f.properties.name !== 'Antarctica');
+  // Antarctica takes a lot of space and is never asked. Extra features
+  // (e.g. Tuvalu) fill gaps in the 50m dataset.
+  const features = geo.features.filter(f => f.properties.name !== 'Antarctica')
+    .concat(EXTRA_FEATURES);
   const byName = new Map(features.map(f => [f.properties.name, f]));
 
   // Adjacency from shared borders (all features, pre-filter, so indexes match).
