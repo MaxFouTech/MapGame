@@ -313,13 +313,18 @@ export class WorldMap {
     setTimeout(() => this._label(targetName, 'target'), 650);
   }
 
+  cancelAnimations() {
+    this.svg.interrupt();
+  }
+
   _drawArrow(guessName, targetName) {
     const gf = this.byName.get(guessName), tf = this.byName.get(targetName);
     if (!gf || !tf) return;
     // Sample the great circle between the two geographic centroids so long
     // arrows curve naturally with the projection.
-    const interp = d3.geoInterpolate(
-      d3.geoCentroid(this._mainPolygon(gf)), d3.geoCentroid(this._mainPolygon(tf)));
+    const gc = d3.geoCentroid(this._mainPolygon(gf));
+    const tc = d3.geoCentroid(this._mainPolygon(tf));
+    const interp = d3.geoInterpolate(gc, tc);
     const pts = d3.range(0, 1.0001, 1 / 48).map(t => this.projection(interp(t))).filter(Boolean);
     if (pts.length < 2) return;
     const line = d3.line().curve(d3.curveCatmullRom.alpha(0.5));
@@ -335,6 +340,18 @@ export class WorldMap {
       .attr('class', 'arrow-head')
       .attr('d', 'M0,0 L-12,-5 L-12,5 Z')
       .attr('transform', `translate(${x2},${y2}) rotate(${ang})`);
+
+    // Distance written on the middle of the arrow.
+    const km = Math.round(d3.geoDistance(gc, tc) * 6371);
+    const midPt = this.projection(interp(0.5));
+    if (midPt) {
+      const g = this.overlay.append('g')
+        .attr('class', 'map-label dist')
+        .attr('transform', `translate(${midPt[0]},${midPt[1]})`);
+      const text = this.cb.distLabel ? this.cb.distLabel(km) : `${km} km`;
+      g.append('text').attr('class', 'map-label-halo').attr('dy', -8).text(text);
+      g.append('text').attr('class', 'map-label-text').attr('dy', -8).text(text);
+    }
 
     this._label(guessName, 'guess');
     this._label(targetName, 'target');
@@ -367,5 +384,8 @@ export class WorldMap {
     this.overlay.selectAll('.map-label text')
       .attr('font-size', `${15 / k}px`)
       .attr('stroke-width', 4 / k);
+    this.overlay.selectAll('.map-label.dist text')
+      .attr('font-size', `${13 / k}px`)
+      .attr('dy', -9 / k);
   }
 }

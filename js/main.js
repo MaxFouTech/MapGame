@@ -8,7 +8,7 @@
 import { LEVELS, PLAYABLE, displayName, levelOf, levelTitle } from './countries.js';
 import * as store from './storage.js';
 import * as sched from './scheduler.js';
-import { WorldMap, mainGeometry } from './map.js';
+import { WorldMap } from './map.js';
 import { GlobeMap } from './globe.js';
 import { t, setLang, getLang } from './i18n.js';
 import * as cloud from './cloud.js';
@@ -65,10 +65,8 @@ function applyStaticI18n() {
       `<span>${b.dataset.mode === '2d' ? '2D' : '3D'}</span>`;
   });
   $('prompt-label').textContent = t('find');
-  $('btn-world').innerHTML = icon('compass') + `<span>${t('worldView')}</span>`;
   $('btn-dontknow').innerHTML = icon('eye') + `<span>${t('showMe')}</span>`;
   $('btn-end').innerHTML = icon('stop') + `<span>${t('endSession')}</span>`;
-  $('btn-next').textContent = t('next');
   updateMapModeUi();
   updateOnlineBadge();
   document.documentElement.lang = getLang();
@@ -572,7 +570,8 @@ async function ensureMap() {
   state.map = new MapCls($('map'), state.world, new Set(PLAYABLE), {
     onValidate: onValidate,
     labelFor: n => displayName(n),
-  });
+    distLabel: km => `${km.toLocaleString(getLang() === 'fr' ? 'fr-FR' : 'en-US')} km`,
+  }, mode === 'globe' ? { rotate: bgGlobe.getRotation() } : undefined);
   state.mapBuiltMode = mode;
   updateMapModeUi();
 }
@@ -581,10 +580,6 @@ function updateMapModeUi() {
   const mode = store.getMapMode();
   document.querySelectorAll('#map-switch button').forEach(b =>
     b.classList.toggle('on', b.dataset.mode === mode));
-  // The hud button shows the mode you would switch TO.
-  $('btn-mapmode').innerHTML = mode === 'globe'
-    ? icon('map') + '<span>2D</span>'
-    : icon('globe') + '<span>3D</span>';
   $('zoom-hint').textContent = t(mode === 'globe' ? 'clickHintGlobe' : 'clickHint');
 }
 
@@ -602,21 +597,27 @@ async function setMapMode(mode) {
 
 document.querySelectorAll('#map-switch button').forEach(b =>
   b.addEventListener('click', () => setMapMode(b.dataset.mode)));
-$('btn-mapmode').addEventListener('click', () => {
-  if (state.phase !== 'asking' || !state.session) return;
-  setMapMode(store.getMapMode() === 'globe' ? '2d' : 'globe');
-});
+
 
 function newSession(mode, extra = {}) {
   return { mode, asked: 0, correct: 0, streak: 0, bestStreak: 0,
     misses: [], ...extra };
 }
 
-async function startSeries(levelN) {
-  const lvl = LEVELS.find(l => l.n === levelN);
+// Enter the game screen; in 3D mode the background globe morphs into the
+// playable globe.
+async function enterGame() {
+  const morph = store.getMapMode() === 'globe' && !REDUCED_MOTION && bgGlobe.armMorph();
   show('screen-game');
   await ensureMap();
   state.map.refit();
+  if (morph) bgGlobe.playMorph();
+  else bgGlobe.stop();
+}
+
+async function startSeries(levelN) {
+  const lvl = LEVELS.find(l => l.n === levelN);
+  await enterGame();
   state.session = newSession('series', {
     levelN, queue: shuffle(lvl.countries), total: lvl.countries.length,
   });
@@ -624,9 +625,7 @@ async function startSeries(levelN) {
 }
 
 async function startTraining(levelN, missed) {
-  show('screen-game');
-  await ensureMap();
-  state.map.refit();
+  await enterGame();
   const needs = {};
   for (const n of missed) needs[n] = TRAIN_GOAL;
   state.session = newSession('training', {
@@ -636,9 +635,7 @@ async function startTraining(levelN, missed) {
 }
 
 async function startReview() {
-  show('screen-game');
-  await ensureMap();
-  state.map.refit();
+  await enterGame();
   state.session = newSession('review');
   state.recentAsked = [];
   state.forcedQueue = [];
@@ -658,11 +655,11 @@ function confettiBurst(x, y) {
   host.appendChild(canvas);
   const ctx = canvas.getContext('2d');
   const colors = ['#f4b400', '#2e9e6b', '#2a7de1', '#e07b39', '#d85f74', '#9c55c9'];
-  const parts = Array.from({ length: 34 }, () => ({
+  const parts = Array.from({ length: 90 }, () => ({
     x, y,
-    vx: (Math.random() - 0.5) * 8,
-    vy: -Math.random() * 7 - 3,
-    s: 4 + Math.random() * 4,
+    vx: (Math.random() - 0.5) * 12,
+    vy: -Math.random() * 9 - 3,
+    s: 4 + Math.random() * 5,
     c: colors[Math.floor(Math.random() * colors.length)],
     r: Math.random() * Math.PI,
     vr: (Math.random() - 0.5) * 0.35,
@@ -670,7 +667,7 @@ function confettiBurst(x, y) {
   const t0 = performance.now();
   requestAnimationFrame(function frame(now) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const fade = Math.max(0, 1 - (now - t0) / 1100);
+    const fade = Math.max(0, 1 - (now - t0) / 1400);
     ctx.globalAlpha = fade;
     for (const p of parts) {
       p.vy += 0.28; p.x += p.vx; p.y += p.vy; p.r += p.vr;
@@ -684,14 +681,6 @@ function confettiBurst(x, y) {
     if (fade > 0) requestAnimationFrame(frame);
     else canvas.remove();
   });
-}
-
-// Great-circle distance between two countries' main landmasses, in km.
-function distanceKm(a, b) {
-  const fa = state.map.byName.get(a), fb = state.map.byName.get(b);
-  if (!fa || !fb) return 0;
-  return Math.round(d3.geoDistance(
-    d3.geoCentroid(mainGeometry(fa)), d3.geoCentroid(mainGeometry(fb))) * 6371);
 }
 
 // Insert back into the queue a few positions ahead (not immediately next).
@@ -708,7 +697,7 @@ function nextQuestion() {
   if (s.mode === 'training' && s.queue.length === 0) return endTraining();
 
   state.phase = 'asking';
-  $('feedback').classList.add('hidden');
+  state.map.cancelAnimations();
   state.map.clearHighlights();
   state.map.enabled = true;
   state.map.zoomReset();
@@ -726,7 +715,10 @@ function nextQuestion() {
   const lvlN = levelOf(name);
   $('prompt-country').textContent = displayName(name);
   $('prompt-tier').innerHTML = `<span class="badge l${lvlN}">${t('levelShort', { n: lvlN })}</span>`;
-  $('zoom-hint').classList.remove('hidden');
+  const hint = $('zoom-hint');
+  hint.classList.remove('cont');
+  hint.textContent = t(store.getMapMode() === 'globe' ? 'clickHintGlobe' : 'clickHint');
+  hint.classList.remove('hidden');
   updateHud();
 }
 
@@ -738,7 +730,6 @@ function onValidate(feature) {
 
   state.phase = 'feedback';
   state.map.enabled = false;
-  $('zoom-hint').classList.add('hidden');
 
   const s = state.session;
   s.asked++;
@@ -750,6 +741,8 @@ function onValidate(feature) {
     s.streak++;
     s.bestStreak = Math.max(s.bestStreak, s.streak);
     if (s.mode === 'training' && --s.needs[target] > 0) requeue(s.queue, target, 2);
+    state.continueOk = true;
+    $('zoom-hint').classList.add('hidden');
     state.map.highlight(target, 'correct-flash');
     const pt = state.map.screenPointOf(target);
     confettiBurst(pt ? pt[0] : state.map.width / 2, pt ? pt[1] : state.map.height / 2);
@@ -775,16 +768,8 @@ function handleMiss(clicked, target) {
     state.forcedQueue.push({ name: target, dueQ: state.player.qIndex + 2 + Math.floor(Math.random() * 3) });
   }
   const failStreak = state.player.records[target]?.failStreak || 0;
-  const failNote = failStreak >= 2
-    ? `<div class="fail-streak">${t('missStreak', { n: failStreak })}</div>` : '';
+  state.continueOk = false;
   if (clicked != null) {
-    const km = distanceKm(clicked, target);
-    const msg =
-      `${nearMiss ? t('soClose') : t('notQuite')} ` +
-      t('youClicked', { guess: escapeHtml(displayName(clicked)), target: escapeHtml(displayName(target)) }) +
-      ` <span class="distance">${t('distanceAway', { d: km.toLocaleString(getLang() === 'fr' ? 'fr-FR' : 'en-US') })}</span>` +
-      (nearMiss ? ` <span class="consolation">${t('nearMissBonus')}</span>` : '') +
-      failNote;
     // Shake the map (and buzz on mobile) first, then show the correction.
     const shakeMs = REDUCED_MOTION ? 0 : 450;
     if (shakeMs) {
@@ -795,30 +780,37 @@ function handleMiss(clicked, target) {
       $('map').classList.remove('shake');
       if (state.phase !== 'feedback' || !state.session) return; // session ended meanwhile
       state.map.showCorrection(clicked, target);
-      showFeedback(msg);
+      setContinueHint(nearMiss, failStreak);
+      state.continueOk = true;
     }, shakeMs);
   } else {
     state.map.revealTarget(target);
-    showFeedback(t('revealMsg', { target: escapeHtml(displayName(target)) }) + failNote);
+    setContinueHint(false, failStreak);
+    state.continueOk = true;
   }
   store.persist();
   updateHud();
+}
+
+// The bottom pill doubles as the "click anywhere to continue" prompt after
+// a miss — all the information (labels, arrow, distance) lives on the map.
+function setContinueHint(nearMiss, failStreak) {
+  const el = $('zoom-hint');
+  let msg = nearMiss ? t('hintMissNear') : t('hintMiss');
+  if (failStreak >= 2) msg += ' · ' + t('missStreak', { n: failStreak });
+  el.textContent = msg;
+  el.classList.add('cont');
+  el.classList.remove('hidden');
 }
 
 function giveUp() {
   if (state.phase !== 'asking') return;
   state.phase = 'feedback';
   state.map.enabled = false;
-  $('zoom-hint').classList.add('hidden');
   const s = state.session;
   s.asked++;
   sched.recordResult(state.player, state.target, false);
   handleMiss(null, state.target);
-}
-
-function showFeedback(html) {
-  $('feedback-text').innerHTML = html;
-  $('feedback').classList.remove('hidden');
 }
 
 function popFeedback(main, sub) {
@@ -834,21 +826,31 @@ function popFeedback(main, sub) {
 function updateHud() {
   const s = state.session;
   if (!s) return;
-  $('hud-perfect').innerHTML = s.misses.length === 0
-    ? icon('sparkle') + `<span>${t('perfectChip')}</span>` : '';
-  $('hud-streak').innerHTML = s.streak >= 2
-    ? icon('flame') + `<span>${t('streakRow', { n: s.streak })}</span>` : '';
+  const errs = s.misses.length;
+  let counters = `<span class="c-ok" title="${t('sum_found')}">${icon('check')}${s.correct}</span>` +
+    `<span class="c-ko">${icon('x')}${errs}</span>`;
+  let showBar = false, okPct = 0, koPct = 0;
   if (s.mode === 'series') {
-    $('hud-score').textContent = `${s.correct}/${s.total}`;
-    $('hud-qcount').textContent = t('questionOf', { i: Math.min(s.asked + 1, s.total), n: s.total });
+    counters += `<span class="c-total">/ ${s.total}</span>`;
+    showBar = true;
+    okPct = 100 * s.correct / s.total;
+    koPct = 100 * Math.min(errs, s.total - s.correct) / s.total;
   } else if (s.mode === 'training') {
     const left = Object.values(s.needs).filter(v => v > 0).length;
-    $('hud-score').textContent = `${s.correct}`;
-    $('hud-qcount').textContent = t('trainingLeft', { n: left });
-  } else {
-    $('hud-score').textContent = `${s.correct}`;
-    $('hud-qcount').textContent = t('correctCount', { c: s.correct, a: s.asked });
+    counters += `<span class="c-total">${t('trainingLeft', { n: left })}</span>`;
   }
+  $('hud-counters').innerHTML = counters;
+  $('hud-progress').style.display = showBar ? '' : 'none';
+  $('hud-prog-ok').style.width = okPct + '%';
+  $('hud-prog-ko').style.width = koPct + '%';
+  const flags = [];
+  if (errs === 0 && s.asked > 0) {
+    flags.push(`<span class="flag-perfect">${icon('sparkle')}<span>${t('perfectChip')}</span></span>`);
+  }
+  if (s.streak >= 3) {
+    flags.push(`<span class="flag-streak">${icon('flame')}<span>${t('streakRow', { n: s.streak })}</span></span>`);
+  }
+  $('hud-flags').innerHTML = flags.join('');
 }
 
 // ---------- session endings ----------
@@ -946,6 +948,7 @@ function openSummary(s, { title, stars = null, subtitle = '' }) {
   // Show the summary as an overlay above the map, with the missed countries
   // highlighted (and framed) in the background.
   state.map.enabled = false;
+  state.map.cancelAnimations();
   state.map.clearHighlights();
   if (missed.length) {
     for (const n of missed) state.map.highlight(n, 'missed-reveal');
@@ -997,21 +1000,11 @@ function endSessionEarly() {
 // question (same as the Next button). Drags/zooms don't trigger it.
 $('map').addEventListener('click', e => {
   if (e.defaultPrevented) return;
-  if (state.phase === 'feedback' && state.session
-    && !$('feedback').classList.contains('hidden')) {
-    nextQuestion();
-  }
+  if (state.phase === 'feedback' && state.session && state.continueOk) nextQuestion();
 });
 
-$('btn-world').addEventListener('click', () => state.map?.zoomReset());
 $('btn-dontknow').addEventListener('click', giveUp);
 $('btn-end').addEventListener('click', endSessionEarly);
-$('btn-next').addEventListener('click', nextQuestion);
-// Tapping the feedback popup itself also advances (the mobile flow, where
-// the Next button is hidden). Guarded so the button click doesn't double-fire.
-$('feedback').addEventListener('click', () => {
-  if (state.phase === 'feedback' && state.session) nextQuestion();
-});
 $('btn-training').addEventListener('click', () => {
   if (state.lastSeries?.missed.length) startTraining(state.lastSeries.levelN, state.lastSeries.missed);
 });
@@ -1023,7 +1016,10 @@ $('btn-again').addEventListener('click', e => {
 $('btn-summary-menu').addEventListener('click', () => { renderMenu(); show('screen-menu'); });
 
 document.addEventListener('keydown', e => {
-  if (state.phase === 'feedback' && !$('feedback').classList.contains('hidden')
+  if (state.phase === 'feedback' && state.session
+    && $('screen-game').classList.contains('active')
+    && !document.body.classList.contains('summary-open')
+    && state.continueOk
     && (e.key === 'Enter' || e.key === ' ')) {
     e.preventDefault();
     nextQuestion();

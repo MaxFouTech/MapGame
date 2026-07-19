@@ -131,32 +131,27 @@
   <div id="map"></div>
 
   <div class="hud hud-top">
-    <div class="hud-card prompt-card">
-      <div class="prompt-label" id="prompt-label"></div>
-      <div class="prompt-country" id="prompt-country">—</div>
-      <div class="prompt-tier" id="prompt-tier"></div>
+    <div class="hud-card main-card">
+      <div class="main-card-head">
+        <div>
+          <div class="prompt-label" id="prompt-label"></div>
+          <div class="prompt-country" id="prompt-country">—</div>
+        </div>
+        <div class="prompt-tier" id="prompt-tier"></div>
+      </div>
+      <div class="hud-counters" id="hud-counters"></div>
+      <div class="hud-progress" id="hud-progress">
+        <span id="hud-prog-ok"></span><span id="hud-prog-ko"></span>
+      </div>
+      <div class="hud-flags" id="hud-flags"></div>
+      <div class="hud-actions">
+        <button id="btn-dontknow" class="btn small ghost"></button>
+        <button id="btn-end" class="btn small ghost danger"></button>
+      </div>
     </div>
-    <div class="hud-card score-card">
-      <div class="score-row"><span class="score-num" id="hud-score">0</span></div>
-      <div class="perfect-row" id="hud-perfect"></div>
-      <div class="streak-row" id="hud-streak"></div>
-      <div class="qcount-row" id="hud-qcount"></div>
-    </div>
-  </div>
-
-  <div class="hud hud-bottom">
-    <button id="btn-world" class="btn hudbtn"></button>
-    <button id="btn-mapmode" class="btn hudbtn"></button>
-    <button id="btn-dontknow" class="btn hudbtn"></button>
-    <button id="btn-end" class="btn hudbtn danger"></button>
   </div>
 
   <div id="zoom-hint" class="zoom-hint hidden"></div>
-
-  <div id="feedback" class="feedback hidden">
-    <div id="feedback-text"></div>
-    <button id="btn-next" class="btn primary"></button>
-  </div>
 
   <div id="points-popup" class="points-popup hidden"></div>
 </div>

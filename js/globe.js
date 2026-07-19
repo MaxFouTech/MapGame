@@ -9,10 +9,11 @@ const d3 = window.d3;
 const clampLat = v => Math.max(-89, Math.min(89, v));
 
 export class GlobeMap {
-  constructor(container, world, playableSet, callbacks) {
+  constructor(container, world, playableSet, callbacks, opts = {}) {
     this.container = container;
     this.playable = playableSet;
-    this.cb = callbacks; // { onValidate(feature), labelFor(name) }
+    this.cb = callbacks; // { onValidate(feature), labelFor(name), distLabel(km) }
+    this.opts = opts;    // { rotate: [lambda, phi] } initial orientation
     this.enabled = false;
 
     const { features, byName, neighbors, tiny } = buildGeoData(world);
@@ -42,7 +43,7 @@ export class GlobeMap {
       .translate([this.width / 2, this.height / 2])
       .scale(this.base)
       .clipAngle(90)
-      .rotate([-10, -20]);
+      .rotate(this.opts.rotate || [-10, -20]);
     this.path = d3.geoPath(this.projection);
 
     this.sphere = this.svg.append('path')
@@ -195,6 +196,20 @@ export class GlobeMap {
             .attr('d', 'M0,0 L-12,-5 L-12,5 Z')
             .attr('transform', `translate(${tip[0]},${tip[1]}) rotate(${ang}) scale(2.1)`);
         }
+        // Distance written on the middle of the arrow.
+        if (this._arrow.mid && d3.geoDistance(this._arrow.mid, center) < Math.PI / 2 - 0.02) {
+          const mp = this.projection(this._arrow.mid);
+          if (mp) {
+            const g = ov.append('g').attr('class', 'map-label dist')
+              .attr('transform', `translate(${mp[0]},${mp[1]})`);
+            g.append('text').attr('class', 'map-label-halo')
+              .attr('font-size', '13px').attr('stroke-width', 4).attr('dy', -9)
+              .text(this._arrow.distText);
+            g.append('text').attr('class', 'map-label-text')
+              .attr('font-size', '13px').attr('dy', -9)
+              .text(this._arrow.distText);
+          }
+        }
       }
     }
 
@@ -285,6 +300,10 @@ export class GlobeMap {
     this.overlay.selectAll('*').remove();
   }
 
+  cancelAnimations() {
+    this.svg.interrupt('globe');
+  }
+
   showCorrection(guessName, targetName) {
     this.highlight(guessName, 'wrong-flash');
     this.highlight(targetName, 'target-reveal');
@@ -295,7 +314,12 @@ export class GlobeMap {
     const mid = d3.geoInterpolate(gc, tc)(0.5);
     const k = Math.max(0.9, Math.min(7, Math.PI / (dist + 0.6)));
     const interp = d3.geoInterpolate(gc, tc);
-    this._arrow = { coords: d3.range(0, 1.0001, 1 / 64).map(interp) };
+    const km = Math.round(dist * 6371);
+    this._arrow = {
+      coords: d3.range(0, 1.0001, 1 / 64).map(interp),
+      mid,
+      distText: this.cb.distLabel ? this.cb.distLabel(km) : `${km} km`,
+    };
     this._labels = [
       { name: guessName, kind: 'guess', lonlat: gc },
       { name: targetName, kind: 'target', lonlat: tc },
