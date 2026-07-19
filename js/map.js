@@ -34,7 +34,7 @@ export function buildGeoData(world) {
   // Countries too small to click comfortably get an enlarged hit area
   // (transparent stroke around their outline, enabled once zoomed in).
   const tiny = new Set(features
-    .filter(f => d3.geoArea(f) < 1e-4) // ≈ under ~4000 km²
+    .filter(f => d3.geoArea(f) < 2e-4) // ≈ under ~8000 km²
     .map(f => f.properties.name));
   return { features, byName, neighbors, tiny };
 }

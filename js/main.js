@@ -127,6 +127,8 @@ state.cloudPlayers = [];   // fetched from Supabase
 state.pinRequest = null;   // { name, mode: 'select'|'set'|'link' }
 
 function renderPlayers() {
+  // The reset button only makes sense once a player is active.
+  $('reset-wrap').classList.toggle('hidden', !state.player);
   const list = $('player-list');
   list.innerHTML = '';
   const players = store.listPlayers();
@@ -324,48 +326,61 @@ function starsHtml(n, cls = '') {
     '</span>';
 }
 
+const LEVEL_GROUPS = [
+  { key: 'group_easy', levels: [1, 2] },
+  { key: 'group_medium', levels: [3, 4, 5, 6] },
+  { key: 'group_hard', levels: [7, 8] },
+  { key: 'group_ultimate', levels: [9, 10] },
+];
+
 function renderMenu() {
   $('menu-player-name').textContent = state.playerName;
   const grid = $('level-grid');
   grid.innerHTML = '';
   const lv = playerLevels();
-  for (const lvl of LEVELS) {
-    const rec = lv[lvl.n] || {};
-    const statuses = lvl.countries.map(n => sched.statusOf(state.player.records[n]));
-    const known = statuses.filter(s => s === 'known' || s === 'mastered').length;
-    const learning = statuses.filter(s => s === 'learning').length;
-    const total = lvl.countries.length;
-    const card = document.createElement('button');
-    card.className = 'level-card' + (rec.bestStars === 3 ? ' gold' : '');
-    const scores = rec.plays
-      ? `<span class="level-scores">${t('lastHigh', {
-          last: `${rec.lastScore}/${total}`, high: `${rec.highScore}/${total}` })}</span>`
-      : '';
-    card.innerHTML = `
-      <span class="level-num l${lvl.n}">${lvl.slam ? icon('crown') : lvl.n}</span>
-      <span class="level-body">
-        <span class="level-title">${escapeHtml(levelTitle(lvl))}</span>
-        <span class="level-meta">${t('countriesCount', { n: total })} · ${t('statusCounts', { k: known, l: learning })}</span>
-        <span class="level-foot">${starsHtml(rec.bestStars || 0)}
-          <span class="prog-bar mini">
-            <span class="prog-fill l${Math.min(lvl.n, 9)}" style="width:${100 * known / total}%"></span>
-            <span class="prog-fill l${Math.min(lvl.n, 9)} soft" style="width:${100 * learning / total}%"></span>
-          </span>
+  for (const g of LEVEL_GROUPS) {
+    const head = document.createElement('h3');
+    head.className = 'group-title';
+    head.textContent = t(g.key);
+    grid.appendChild(head);
+    const wrap = document.createElement('div');
+    wrap.className = 'group-grid';
+    for (const n of g.levels) {
+      const lvl = LEVELS.find(l => l.n === n);
+      const rec = lv[lvl.n] || {};
+      const card = document.createElement('button');
+      card.className = 'level-card' + (rec.bestStars === 3 ? ' gold' : '');
+      card.innerHTML = `
+        <span class="level-num l${lvl.n}">${lvl.slam ? icon('crown') : lvl.n}</span>
+        <span class="level-body">
+          <span class="level-title">${escapeHtml(levelTitle(lvl))}</span>
+          <span class="level-meta">${t('countriesCount', { n: lvl.countries.length })}</span>
         </span>
-        ${scores}
-      </span>`;
-    card.addEventListener('click', () => startSeries(lvl.n));
-    grid.appendChild(card);
+        ${starsHtml(rec.bestStars || 0)}`;
+      card.addEventListener('click', () => startSeries(lvl.n));
+      wrap.appendChild(card);
+    }
+    grid.appendChild(wrap);
   }
 }
 
 $('btn-switch-player').addEventListener('click', () => { renderPlayers(); show('screen-players'); refreshCloudPlayers(); });
 $('btn-review').addEventListener('click', startReview);
-$('btn-leaderboard').addEventListener('click', () => {
-  state.lbRows = null; // refetch on each visit
-  show('screen-leaderboard');
-  renderLeaderboard('total');
-});
+
+// The hub groups leaderboard / country list / progress behind one menu
+// button, with tabs to switch between the three views.
+const HUB_SCREENS = { lb: 'screen-leaderboard', countries: 'screen-countries', progress: 'screen-stats' };
+function openHub(key) {
+  if (key === 'lb') { state.lbRows = null; renderLeaderboard('total'); }
+  else if (key === 'countries') renderCountryList();
+  else renderStats();
+  show(HUB_SCREENS[key]);
+  document.querySelectorAll('.hub-tabs button').forEach(b =>
+    b.classList.toggle('on', b.dataset.hub === key));
+}
+$('btn-hub').addEventListener('click', () => openHub('lb'));
+document.querySelectorAll('.hub-tabs button').forEach(b =>
+  b.addEventListener('click', () => openHub(b.dataset.hub)));
 $('btn-lb-back').addEventListener('click', () => { renderMenu(); show('screen-menu'); });
 
 // ---------- reset my data ----------
@@ -384,7 +399,7 @@ $('btn-reset-yes').addEventListener('click', async () => {
   if (p?.cloudId) { try { await cloud.deletePlayerRows(p.cloudId); } catch (e) { /* offline */ } }
   $('reset-confirm').classList.add('hidden');
   $('btn-reset').classList.remove('hidden');
-  renderMenu();
+  renderPlayers();
 });
 
 // ---------- leaderboard screen ----------
@@ -448,9 +463,7 @@ async function renderLeaderboard(sel) {
       </tbody></table>` : `<p class="hint">${t('lbEmpty')}</p>`);
   }
 }
-$('btn-countries').addEventListener('click', () => { renderCountryList(); show('screen-countries'); });
 $('btn-countries-back').addEventListener('click', () => { renderMenu(); show('screen-menu'); });
-$('btn-stats').addEventListener('click', () => { renderStats(); show('screen-stats'); });
 $('btn-stats-back').addEventListener('click', () => { renderMenu(); show('screen-menu'); });
 
 // ---------- country list screen ----------
@@ -626,6 +639,7 @@ function newSession(mode, extra = {}) {
 // (the veil fades out via CSS, the layout re-fits under the hud).
 async function enterGame() {
   await ensureMap();
+  state.keepCorrection = false;
   show('screen-game');
   state.map.refit();
 }
@@ -637,6 +651,14 @@ async function startSeries(levelN) {
     levelN, queue: shuffle(lvl.countries), total: lvl.countries.length,
   });
   nextQuestion();
+  frameLevel(lvl);
+}
+
+// Regional levels open framed on their region; world-wide levels (1:
+// giants, 9: islands, 10: grand slam) keep the global view.
+function frameLevel(lvl) {
+  if (!lvl || lvl.slam || lvl.n === 1 || lvl.n === 9) state.map.zoomReset();
+  else state.map.zoomToFeatures(lvl.countries, 900);
 }
 
 async function startTraining(levelN, missed) {
@@ -647,6 +669,7 @@ async function startTraining(levelN, missed) {
     levelN, queue: shuffle(missed), needs,
   });
   nextQuestion();
+  frameLevel(LEVELS.find(l => l.n === levelN));
 }
 
 async function startReview() {
@@ -655,6 +678,7 @@ async function startReview() {
   state.recentAsked = [];
   state.forcedQueue = [];
   nextQuestion();
+  state.map.zoomReset();
 }
 
 const REDUCED_MOTION = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -712,10 +736,14 @@ function nextQuestion() {
   if (s.mode === 'training' && s.queue.length === 0) return endTraining();
 
   state.phase = 'asking';
-  state.map.cancelAnimations();
-  state.map.clearHighlights();
   state.map.enabled = true;
-  state.map.zoomReset();
+  // The camera stays wherever the player left it — no reset between
+  // questions. After a miss the correction (both countries + arrow) stays
+  // on screen for study; it is cleared when the player answers.
+  if (!state.keepCorrection) {
+    state.map.cancelAnimations();
+    state.map.clearHighlights();
+  }
 
   let name;
   if (s.mode === 'review') {
@@ -745,6 +773,10 @@ function onValidate(feature) {
 
   state.phase = 'feedback';
   state.map.enabled = false;
+  if (state.keepCorrection) {
+    state.map.clearHighlights();
+    state.keepCorrection = false;
+  }
 
   const s = state.session;
   s.asked++;
@@ -775,6 +807,7 @@ function handleMiss(clicked, target) {
   const nearMiss = clicked != null && state.map.isNeighbor(clicked, target);
   s.streak = 0;
   s.misses.push(target);
+  state.keepCorrection = true;
   if (s.mode === 'training') {
     s.needs[target] = TRAIN_GOAL;
     requeue(s.queue, target, 2);
@@ -822,6 +855,10 @@ function giveUp() {
   if (state.phase !== 'asking') return;
   state.phase = 'feedback';
   state.map.enabled = false;
+  if (state.keepCorrection) {
+    state.map.clearHighlights();
+    state.keepCorrection = false;
+  }
   const s = state.session;
   s.asked++;
   sched.recordResult(state.player, state.target, false);
@@ -892,9 +929,9 @@ function commonSessionSave(s, { updateLevel = false } = {}) {
 }
 
 function starsFor(s) {
-  if (s.misses.length === 0) return 3;
   const acc = s.correct / s.total;
-  if (acc >= 0.8) return 2;
+  if (acc >= 1) return 3;
+  if (acc >= 0.75) return 2;
   if (acc >= 0.5) return 1;
   return 0;
 }
@@ -974,6 +1011,7 @@ function openSummary(s, { title, stars = null, subtitle = '', resumable = false 
   state.map.enabled = false;
   state.map.cancelAnimations();
   state.map.clearHighlights();
+  state.keepCorrection = false;
   if (missed.length) {
     for (const n of missed) state.map.highlight(n, 'missed-reveal');
     state.map.zoomToFeatures(missed, 900, 0.8);

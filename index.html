@@ -52,6 +52,15 @@
       <button id="btn-add-player" type="button" class="btn primary" data-i18n="addPlayer"></button>
     </div>
     <p id="player-msg" class="pin-error hidden"></p>
+
+    <div id="reset-wrap" class="reset-wrap hidden">
+      <button id="btn-reset" class="btn ghost danger small" data-i18n="resetBtn" data-icon="reset"></button>
+      <span id="reset-confirm" class="hidden">
+        <span data-i18n="resetConfirm"></span>
+        <button id="btn-reset-yes" class="btn danger small" data-i18n="resetYes"></button>
+        <button id="btn-reset-no" class="btn ghost small" data-i18n="cancel"></button>
+      </span>
+    </div>
   </div>
 </div>
 
@@ -77,19 +86,10 @@
 
     <div class="menu-actions">
       <button id="btn-review" class="btn primary" data-i18n="reviewBtn" data-icon="repeat"></button>
-      <button id="btn-leaderboard" class="btn ghost" data-i18n="leaderboardBtn" data-icon="trophy"></button>
-      <button id="btn-countries" class="btn ghost" data-i18n="countryListBtn" data-icon="book"></button>
-      <button id="btn-stats" class="btn ghost" data-i18n="myProgress" data-icon="chart"></button>
+      <button id="btn-hub" class="btn ghost" data-i18n="hubBtn" data-icon="trophy"></button>
     </div>
     <div class="menu-footer">
       <span id="online-badge" class="online-badge"></span>
-      <span class="menu-footer-spacer"></span>
-      <button id="btn-reset" class="btn ghost danger small" data-i18n="resetBtn" data-icon="reset"></button>
-      <span id="reset-confirm" class="hidden">
-        <span data-i18n="resetConfirm"></span>
-        <button id="btn-reset-yes" class="btn danger small" data-i18n="resetYes"></button>
-        <button id="btn-reset-no" class="btn ghost small" data-i18n="cancel"></button>
-      </span>
     </div>
   </div>
 </div>
@@ -101,6 +101,11 @@
       <h2 data-i18n="leaderboardBtn"></h2>
       <button id="btn-lb-back" class="btn ghost" data-i18n="back"></button>
     </div>
+    <nav class="hub-tabs">
+      <button data-hub="lb" data-i18n="tabLb" data-icon="trophy"></button>
+      <button data-hub="countries" data-i18n="tabCountries" data-icon="book"></button>
+      <button data-hub="progress" data-i18n="tabProgress" data-icon="chart"></button>
+    </nav>
     <div id="lb-tabs" class="lb-tabs"></div>
     <div id="lb-body"></div>
   </div>
@@ -113,6 +118,11 @@
       <h2 data-i18n="countryListBtn"></h2>
       <button id="btn-countries-back" class="btn ghost" data-i18n="back"></button>
     </div>
+    <nav class="hub-tabs">
+      <button data-hub="lb" data-i18n="tabLb" data-icon="trophy"></button>
+      <button data-hub="countries" data-i18n="tabCountries" data-icon="book"></button>
+      <button data-hub="progress" data-i18n="tabProgress" data-icon="chart"></button>
+    </nav>
     <p class="hint" data-i18n="listHint"></p>
     <div id="country-legend" class="country-legend"></div>
     <div id="country-list-body"></div>
@@ -126,6 +136,11 @@
       <h2><span data-i18n="progressTitle"></span><span id="stats-player-name"></span></h2>
       <button id="btn-stats-back" class="btn ghost" data-i18n="back"></button>
     </div>
+    <nav class="hub-tabs">
+      <button data-hub="lb" data-i18n="tabLb" data-icon="trophy"></button>
+      <button data-hub="countries" data-i18n="tabCountries" data-icon="book"></button>
+      <button data-hub="progress" data-i18n="tabProgress" data-icon="chart"></button>
+    </nav>
     <div id="stats-summary" class="stats-summary"></div>
     <h3 data-i18n="knowledgeOverTime"></h3>
     <div id="stats-evolution" class="stats-evolution"></div>

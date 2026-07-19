@@ -145,7 +145,9 @@ export class GlobeMap {
   // Fit the globe in the space below the hud (topInset) and above the hint.
   _applyLayout() {
     const top = this.cb.topInset ? this.cb.topInset() : 0;
-    this.base = Math.min(this.width, this.height - top) / 2 - 10;
+    // 30% larger than the strict fit: the horizon may run off-screen on the
+    // narrow axis, which reads as a closer, more immersive globe.
+    this.base = (Math.min(this.width, this.height - top) / 2 - 10) * 1.3;
     this.projection
       .translate([this.width / 2, top + (this.height - top) / 2])
       .scale(this.base * this.k);

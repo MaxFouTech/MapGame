@@ -62,9 +62,9 @@ body.summary-open .hud, body.summary-open .zoom-hint,
 body.summary-open .feedback, body.summary-open .points-popup { display: none !important; }
 
 .panel {
-  background: rgba(255, 255, 255, .84);
-  backdrop-filter: blur(10px) saturate(1.15);
-  -webkit-backdrop-filter: blur(10px) saturate(1.15);
+  background: rgba(255, 255, 255, .62);
+  backdrop-filter: blur(14px) saturate(1.15);
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
   border-radius: 18px;
   box-shadow: 0 12px 40px rgba(20, 40, 60, .14);
   padding: 36px 42px;
@@ -123,9 +123,9 @@ h3 { margin: 22px 0 6px; }
 .player-row {
   display: flex; justify-content: space-between; align-items: center;
   padding: 12px 16px; border: 2px solid #e2e9ee; border-radius: 12px;
-  background: #fff; text-align: left;
+  background: rgba(255, 255, 255, .55); text-align: left;
 }
-.player-row:hover { border-color: var(--accent); background: #f4f9ff; }
+.player-row:hover { border-color: var(--accent); background: rgba(244, 249, 255, .8); }
 .player-row-name { font-weight: 700; font-size: 1.05rem; }
 .player-row-meta { color: var(--ink-soft); font-size: .85rem; }
 .new-player { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -143,7 +143,7 @@ h3 { margin: 22px 0 6px; }
 /* ===== pin panel / player screen extras ===== */
 .pin-panel {
   border: 2px solid var(--accent); border-radius: 12px;
-  padding: 12px 14px; margin-bottom: 16px; background: #f4f9ff;
+  padding: 12px 14px; margin-bottom: 16px; background: rgba(244, 249, 255, .65);
   text-align: left;
 }
 .pin-panel p { margin-bottom: 8px; font-weight: 600; }
@@ -169,11 +169,20 @@ h3 { margin: 22px 0 6px; }
 .perfect-row, .streak-row { display: flex; align-items: center; gap: 4px; justify-content: flex-end; }
 .btn.small { padding: 5px 10px; font-size: .8rem; }
 #reset-confirm { display: inline-flex; align-items: center; gap: 8px; font-size: .85rem; color: var(--bad); }
+.reset-wrap { margin-top: 20px; padding-top: 12px; border-top: 1px solid #edf1f4; text-align: center; }
 
 /* ===== leaderboard ===== */
+.hub-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 14px; }
+.hub-tabs button {
+  border: 2px solid #dbe4ea; background: rgba(255, 255, 255, .55); border-radius: 999px;
+  padding: 6px 14px; font-weight: 700; font-size: .85rem; color: var(--ink-soft);
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.hub-tabs button.on { border-color: var(--accent); color: var(--accent-dark); background: rgba(234, 243, 253, .85); }
+
 .lb-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 14px; }
 .lb-tab {
-  border: 2px solid #dbe4ea; background: #fff; border-radius: 999px;
+  border: 2px solid #dbe4ea; background: rgba(255, 255, 255, .55); border-radius: 999px;
   padding: 5px 12px; font-weight: 700; font-size: .82rem; color: var(--ink-soft);
 }
 .lb-tab.on { border-color: var(--accent); color: var(--accent-dark); background: #eaf3fd; }
@@ -191,27 +200,32 @@ h3 { margin: 22px 0 6px; }
 }
 .menu-actions .btn {
   justify-content: flex-start; padding: 12px 14px;
-  border: 2px solid #e2e9ee; background: #fff; border-radius: 12px;
+  border: 2px solid #e2e9ee; background: rgba(255, 255, 255, .55); border-radius: 12px;
 }
-.menu-actions .btn:hover { border-color: var(--accent); background: #f4f9ff; }
+.menu-actions .btn:hover { border-color: var(--accent); background: rgba(244, 249, 255, .8); }
 .menu-actions .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .menu-actions .btn.primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
 .menu-actions .btn .ico { width: 1.25em; height: 1.25em; }
 .summary-actions .btn { justify-content: center; }
 
-.level-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 10px; margin: 14px 0 6px;
+.level-grid { margin: 4px 0 6px; }
+.group-title {
+  margin: 14px 0 6px; font-size: .78rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .09em; color: var(--ink-soft);
+}
+.group-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
 }
 .level-card {
   display: flex; gap: 12px; align-items: center; text-align: left;
-  border: 2px solid #e2e9ee; border-radius: 14px; background: #fff;
+  border: 2px solid #e2e9ee; border-radius: 14px; background: rgba(255, 255, 255, .55);
   padding: 12px 14px;
 }
-.level-card:hover { border-color: var(--accent); background: #f4f9ff; }
+.level-card:hover { border-color: var(--accent); background: rgba(244, 249, 255, .8); }
 .level-card.gold {
   border-color: #e2b93b;
-  background: linear-gradient(135deg, #fffdf3, #fdf3cf);
+  background: linear-gradient(135deg, rgba(255, 253, 243, .72), rgba(253, 243, 207, .72));
   box-shadow: 0 2px 12px rgba(212, 160, 23, .18);
 }
 .level-card.gold:hover { border-color: #caa21f; }
@@ -277,7 +291,7 @@ h3 { margin: 22px 0 6px; }
 /* ===== stats ===== */
 .stats-summary { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0; }
 .stat-tile {
-  flex: 1 1 90px; background: #f2f6f9; border-radius: 12px; padding: 12px;
+  flex: 1 1 90px; background: rgba(242, 246, 249, .6); border-radius: 12px; padding: 12px;
   display: flex; flex-direction: column; align-items: center;
 }
 .stat-tile b { font-size: 1.3rem; }
@@ -306,7 +320,7 @@ h3 { margin: 22px 0 6px; }
 .status.known { color: var(--accent); }
 .status.mastered { color: var(--good); }
 
-.stats-evolution svg { background: #f7fafc; border-radius: 10px; }
+.stats-evolution svg { background: rgba(247, 250, 252, .6); border-radius: 10px; }
 .evo-line { fill: none; stroke-width: 2.5; }
 .evo-line.known { stroke: var(--accent); }
 .evo-line.mastered { stroke: var(--good); }
@@ -376,7 +390,7 @@ h3 { margin: 22px 0 6px; }
   align-items: flex-start;
 }
 .hud-card {
-  background: rgba(255, 255, 255, .88);
+  background: rgba(255, 255, 255, .78);
   backdrop-filter: blur(8px) saturate(1.1);
   -webkit-backdrop-filter: blur(8px) saturate(1.1);
   border-radius: 14px; padding: 10px 16px;
@@ -464,7 +478,8 @@ h3 { margin: 22px 0 6px; }
   .panel { padding: 16px 14px; border-radius: 14px; }
   .panel.wide h2 { font-size: 1.15rem; }
   .logo.small { font-size: 1.15rem; }
-  .level-grid { gap: 6px; margin: 10px 0 4px; }
+  .level-grid { margin: 8px 0 4px; }
+  .group-grid { gap: 6px; }
   .level-card { padding: 7px 10px; gap: 8px; border-radius: 10px; }
   .level-num { width: 26px; height: 26px; font-size: .9rem; border-radius: 8px; }
   .level-body { gap: 1px; }
