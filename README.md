@@ -73,6 +73,10 @@ the priority list of countries to reinforce, and per-country accuracy.
 ## Tech
 
 - Plain HTML/CSS/ES modules, no framework, no build.
+- Two map modes: flat 2D (Natural Earth projection) or 3D globe
+  (orthographic) — spin by dragging, pinch or scroll to zoom; the
+  correction arrow follows the great circle on the sphere. Switchable
+  from the menu or mid-game, remembered per browser.
 - [D3](https://d3js.org/) + [topojson-client](https://github.com/topojson/topojson-client)
   (vendored in `vendor/`).
 - Map data: [world-atlas](https://github.com/topojson/world-atlas) 50m

@@ -12,6 +12,76 @@ const PALETTE = [
 const NON_PLAYABLE = '#d9d5cc';
 const OCEAN = '#cfe0ea';
 
+// Shared between the 2D map and the 3D globe.
+export function buildGeoData(world) {
+  const geo = topojson.feature(world, world.objects.countries);
+  // Antarctica takes a lot of space and is never asked.
+  const features = geo.features.filter(f => f.properties.name !== 'Antarctica');
+  const byName = new Map(features.map(f => [f.properties.name, f]));
+
+  // Adjacency from shared borders (all features, pre-filter, so indexes match).
+  const allGeoms = world.objects.countries.geometries;
+  const neighborIdx = topojson.neighbors(allGeoms);
+  const neighbors = new Map();
+  allGeoms.forEach((g, i) => {
+    neighbors.set(g.properties.name,
+      new Set(neighborIdx[i].map(j => allGeoms[j].properties.name)));
+  });
+  return { features, byName, neighbors };
+}
+
+// Greedy graph coloring: countries sharing a border, or with nearby
+// centroids (small neighbors like islands), never get the same color.
+export function computeColors(features, neighbors, playable) {
+  const conflicts = new Map(features.map(f => [f.properties.name, new Set()]));
+  const add = (a, b) => { conflicts.get(a)?.add(b); conflicts.get(b)?.add(a); };
+
+  for (const f of features) {
+    for (const n of (neighbors.get(f.properties.name) || [])) {
+      if (conflicts.has(n)) add(f.properties.name, n);
+    }
+  }
+
+  // Proximity conflicts via geographic centroids (degrees, rough but fine).
+  const cent = features.map(f => ({ name: f.properties.name, c: d3.geoCentroid(f) }));
+  for (let i = 0; i < cent.length; i++) {
+    for (let j = i + 1; j < cent.length; j++) {
+      const dx = Math.abs(cent[i].c[0] - cent[j].c[0]);
+      const dy = Math.abs(cent[i].c[1] - cent[j].c[1]);
+      if (Math.min(dx, 360 - dx) < 7 && dy < 7) add(cent[i].name, cent[j].name);
+    }
+  }
+
+  // Welsh–Powell: color highest-degree first.
+  const order = [...conflicts.keys()].sort((a, b) => conflicts.get(b).size - conflicts.get(a).size);
+  const colors = new Map();
+  for (const name of order) {
+    if (!playable.has(name)) { colors.set(name, NON_PLAYABLE); continue; }
+    const used = new Set();
+    for (const n of conflicts.get(name)) {
+      const c = colors.get(n);
+      if (c) used.add(c);
+    }
+    colors.set(name, PALETTE.find(c => !used.has(c)) || PALETTE[0]);
+  }
+  return colors;
+}
+
+// Largest polygon of a multipolygon by spherical area — for centroids and
+// bounds of countries with far-flung islands or antimeridian crossings.
+export function mainGeometry(f) {
+  if (f.geometry.type !== 'MultiPolygon') return f.geometry;
+  let best = f.geometry, bestArea = -1;
+  for (const coords of f.geometry.coordinates) {
+    const poly = { type: 'Polygon', coordinates: coords };
+    const a = d3.geoArea(poly);
+    if (a > bestArea) { bestArea = a; best = poly; }
+  }
+  return best;
+}
+
+export { OCEAN, NON_PLAYABLE };
+
 export class WorldMap {
   constructor(container, world, playableSet, callbacks) {
     this.container = container;
@@ -19,19 +89,10 @@ export class WorldMap {
     this.cb = callbacks; // { onValidate(feature), labelFor(name) }
     this.enabled = false;
 
-    const geo = topojson.feature(world, world.objects.countries);
-    // Antarctica takes a lot of vertical space and is never asked.
-    this.features = geo.features.filter(f => f.properties.name !== 'Antarctica');
-    this.byName = new Map(this.features.map(f => [f.properties.name, f]));
-
-    // Adjacency from shared borders (all features, pre-filter, so indexes match).
-    const allGeoms = world.objects.countries.geometries;
-    const neighborIdx = topojson.neighbors(allGeoms);
-    this.neighbors = new Map();
-    allGeoms.forEach((g, i) => {
-      this.neighbors.set(g.properties.name,
-        new Set(neighborIdx[i].map(j => allGeoms[j].properties.name)));
-    });
+    const { features, byName, neighbors } = buildGeoData(world);
+    this.features = features;
+    this.byName = byName;
+    this.neighbors = neighbors;
 
     this._build();
   }
@@ -60,7 +121,7 @@ export class WorldMap {
     this.g = this.svg.append('g');
     this.overlay = this.g.append('g').attr('class', 'overlay-layer');
 
-    this._colorize();
+    this.colors = computeColors(this.features, this.neighbors, this.playable);
 
     this.countryPaths = this.g.selectAll('path.country')
       .data(this.features, f => f.properties.name)
@@ -102,42 +163,6 @@ export class WorldMap {
     this.svg.attr('viewBox', `0 0 ${this.width} ${this.height}`);
     this._fitProjection();
     this.countryPaths.attr('d', this.path);
-  }
-
-  // Greedy graph coloring: countries sharing a border, or with nearby
-  // centroids (small neighbors like islands), never get the same color.
-  _colorize() {
-    const conflicts = new Map(this.features.map(f => [f.properties.name, new Set()]));
-    const add = (a, b) => { conflicts.get(a)?.add(b); conflicts.get(b)?.add(a); };
-
-    for (const f of this.features) {
-      for (const n of (this.neighbors.get(f.properties.name) || [])) {
-        if (conflicts.has(n)) add(f.properties.name, n);
-      }
-    }
-
-    // Proximity conflicts via geographic centroids (degrees, rough but fine).
-    const cent = this.features.map(f => ({ name: f.properties.name, c: d3.geoCentroid(f) }));
-    for (let i = 0; i < cent.length; i++) {
-      for (let j = i + 1; j < cent.length; j++) {
-        const dx = Math.abs(cent[i].c[0] - cent[j].c[0]);
-        const dy = Math.abs(cent[i].c[1] - cent[j].c[1]);
-        if (Math.min(dx, 360 - dx) < 7 && dy < 7) add(cent[i].name, cent[j].name);
-      }
-    }
-
-    // Welsh–Powell: color highest-degree first.
-    const order = [...conflicts.keys()].sort((a, b) => conflicts.get(b).size - conflicts.get(a).size);
-    this.colors = new Map();
-    for (const name of order) {
-      if (!this.playable.has(name)) { this.colors.set(name, NON_PLAYABLE); continue; }
-      const used = new Set();
-      for (const n of conflicts.get(name)) {
-        const c = this.colors.get(n);
-        if (c) used.add(c);
-      }
-      this.colors.set(name, PALETTE.find(c => !used.has(c)) || PALETTE[0]);
-    }
   }
 
   // A click on a country is always an answer — the player manages zoom and

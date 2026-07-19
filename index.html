@@ -34,6 +34,9 @@
     <div class="menu-head">
       <h1 class="logo small">🌍 MapGame</h1>
       <div class="menu-head-right">
+        <div class="lang-switch map-switch" id="map-switch">
+          <button data-mode="2d">🗺️ 2D</button><button data-mode="globe">🌐 3D</button>
+        </div>
         <div class="lang-switch" id="lang-switch-menu">
           <button data-lang="fr">FR</button><button data-lang="en">EN</button>
         </div>
@@ -104,6 +107,7 @@
 
   <div class="hud hud-bottom">
     <button id="btn-world" class="btn hudbtn"></button>
+    <button id="btn-mapmode" class="btn hudbtn"></button>
     <button id="btn-dontknow" class="btn hudbtn"></button>
     <button id="btn-end" class="btn hudbtn danger"></button>
   </div>

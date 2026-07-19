@@ -72,6 +72,15 @@ export function setStoredLang(l) {
   save();
 }
 
+export function getMapMode() {
+  return db.mapMode === 'globe' ? 'globe' : '2d';
+}
+
+export function setMapMode(m) {
+  db.mapMode = m === 'globe' ? 'globe' : '2d';
+  save();
+}
+
 export function persist() {
   save();
 }

@@ -224,6 +224,7 @@ h3 { margin: 22px 0 6px; }
    browser swallows one-finger drags after a pinch zoom. */
 #map svg { display: block; touch-action: none; }
 .country { cursor: pointer; }
+.globe-ocean { filter: drop-shadow(0 6px 22px rgba(30, 60, 90, .25)); }
 .country:hover { filter: brightness(.92); }
 .country.territory { cursor: default; }
 

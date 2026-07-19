@@ -9,6 +9,7 @@ import { LEVELS, PLAYABLE, displayName, levelOf, levelTitle } from './countries.
 import * as store from './storage.js';
 import * as sched from './scheduler.js';
 import { WorldMap } from './map.js';
+import { GlobeMap } from './globe.js';
 import { t, setLang, getLang } from './i18n.js';
 
 const d3 = window.d3;
@@ -56,7 +57,7 @@ function applyStaticI18n() {
   $('btn-dontknow').textContent = t('showMe');
   $('btn-end').textContent = t('endSession');
   $('btn-next').textContent = t('next');
-  $('zoom-hint').textContent = t('clickHint');
+  updateMapModeUi();
   document.documentElement.lang = getLang();
   document.querySelectorAll('.lang-switch button').forEach(b =>
     b.classList.toggle('on', b.dataset.lang === getLang()));
@@ -290,14 +291,48 @@ function renderEvolution(p) {
 // ---------- game ----------
 
 async function ensureMap() {
-  if (state.map) return;
-  const world = await fetch('data/countries-50m.json').then(r => r.json());
-  state.world = world;
-  state.map = new WorldMap($('map'), world, new Set(PLAYABLE), {
+  const mode = store.getMapMode();
+  if (state.map && state.mapBuiltMode === mode) return;
+  if (!state.world) {
+    state.world = await fetch('data/countries-50m.json').then(r => r.json());
+  }
+  $('map').innerHTML = '';
+  const MapCls = mode === 'globe' ? GlobeMap : WorldMap;
+  state.map = new MapCls($('map'), state.world, new Set(PLAYABLE), {
     onValidate: onValidate,
     labelFor: n => displayName(n),
   });
+  state.mapBuiltMode = mode;
+  updateMapModeUi();
 }
+
+function updateMapModeUi() {
+  const mode = store.getMapMode();
+  document.querySelectorAll('#map-switch button').forEach(b =>
+    b.classList.toggle('on', b.dataset.mode === mode));
+  // The hud button shows the mode you would switch TO.
+  $('btn-mapmode').textContent = mode === 'globe' ? '🗺️ 2D' : '🌐 3D';
+  $('zoom-hint').textContent = t(mode === 'globe' ? 'clickHintGlobe' : 'clickHint');
+}
+
+async function setMapMode(mode) {
+  store.setMapMode(mode);
+  updateMapModeUi();
+  // Rebuild the map only when it exists; mid-question switches keep the
+  // same target and phase.
+  if (state.map) {
+    const wasAsking = state.phase === 'asking' && state.session;
+    await ensureMap();
+    if (wasAsking) state.map.enabled = true;
+  }
+}
+
+document.querySelectorAll('#map-switch button').forEach(b =>
+  b.addEventListener('click', () => setMapMode(b.dataset.mode)));
+$('btn-mapmode').addEventListener('click', () => {
+  if (state.phase !== 'asking' || !state.session) return;
+  setMapMode(store.getMapMode() === 'globe' ? '2d' : 'globe');
+});
 
 function newSession(mode, extra = {}) {
   return { mode, asked: 0, correct: 0, streak: 0, bestStreak: 0,
