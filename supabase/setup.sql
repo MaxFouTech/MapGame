@@ -40,3 +40,37 @@ create policy "leaderboard read"   on public.leaderboard for select using (true)
 create policy "leaderboard insert" on public.leaderboard for insert with check (true);
 create policy "leaderboard update" on public.leaderboard for update using (true) with check (true);
 create policy "leaderboard delete" on public.leaderboard for delete using (true);
+
+-- ===== Admin cleanup (password-protected RPC) =====
+-- Wipes every player account and leaderboard row from the website's hidden
+-- admin panel. The password is checked INSIDE the function: only its
+-- SHA-256 hash lives in the database, and the plaintext password is
+-- deliberately NOT in this repository. Before running, replace the
+-- placeholder below with the hex sha256 of your admin password:
+--   printf '%s' 'your-password' | openssl dgst -sha256
+create extension if not exists pgcrypto with schema extensions;
+
+create or replace function public.admin_wipe_players(secret text)
+returns json
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  n_players int;
+  n_scores int;
+begin
+  if encode(digest(secret, 'sha256'), 'hex')
+     <> 'REPLACE_WITH_SHA256_HEX_OF_ADMIN_PASSWORD' then
+    return json_build_object('ok', false, 'error', 'unauthorized');
+  end if;
+  delete from public.leaderboard;
+  get diagnostics n_scores = row_count;
+  delete from public.players;
+  get diagnostics n_players = row_count;
+  return json_build_object('ok', true, 'players', n_players, 'scores', n_scores);
+end;
+$$;
+
+revoke all on function public.admin_wipe_players(text) from public;
+grant execute on function public.admin_wipe_players(text) to anon, authenticated;

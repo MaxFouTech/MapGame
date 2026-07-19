@@ -170,6 +170,13 @@ h3 { margin: 22px 0 6px; }
 .btn.small { padding: 5px 10px; font-size: .8rem; }
 #reset-confirm { display: inline-flex; align-items: center; gap: 8px; font-size: .85rem; color: var(--bad); }
 .reset-wrap { margin-top: 20px; padding-top: 12px; border-top: 1px solid #edf1f4; text-align: center; }
+.admin-link {
+  border: none; background: none; color: #b6c2cb; font-size: .72rem;
+  margin-top: 12px; padding: 4px;
+}
+.admin-link:hover { color: var(--ink-soft); text-decoration: underline; }
+#admin-panel { margin-top: 8px; }
+#admin-panel .new-player input { flex: 1 1 100%; max-width: none; }
 
 /* ===== leaderboard ===== */
 .hub-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 14px; }

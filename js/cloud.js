@@ -118,6 +118,18 @@ export async function fetchLeaderboard() {
   return r.json();
 }
 
+// Admin: wipe every account and score. The password travels as a request
+// parameter only; the Postgres function (see supabase/setup.sql) compares
+// its SHA-256 hash server-side and returns {ok:false} on mismatch.
+export async function adminWipe(secret) {
+  const r = await req('/rpc/admin_wipe_players', {
+    method: 'POST',
+    body: JSON.stringify({ secret }),
+  }, 10000);
+  if (!r.ok) throw new Error('admin ' + r.status);
+  return r.json();
+}
+
 export async function deletePlayerRows(cloudId) {
   const r = await req(`/leaderboard?player_id=eq.${encodeURIComponent(cloudId)}`,
     { method: 'DELETE' });

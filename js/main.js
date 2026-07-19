@@ -402,6 +402,47 @@ $('btn-reset-yes').addEventListener('click', async () => {
   renderPlayers();
 });
 
+// ---------- admin cleanup ----------
+// Wipes ALL player accounts and scores (Supabase + this browser). The
+// password is sent as a passthrough to a Postgres function that checks its
+// hash server-side; it is never stored anywhere client-side.
+
+$('btn-admin').addEventListener('click', () => {
+  const panel = $('admin-panel');
+  panel.classList.toggle('hidden');
+  $('admin-msg').classList.add('hidden');
+  $('admin-pass').value = '';
+  if (!panel.classList.contains('hidden')) $('admin-pass').focus();
+});
+$('btn-admin-cancel').addEventListener('click', () => {
+  $('admin-pass').value = '';
+  $('admin-panel').classList.add('hidden');
+});
+async function runAdminWipe() {
+  const secret = $('admin-pass').value;
+  if (!secret) return;
+  const msg = $('admin-msg');
+  msg.classList.remove('hidden');
+  msg.textContent = '…';
+  try {
+    const out = await cloud.adminWipe(secret);
+    $('admin-pass').value = '';
+    if (!out.ok) { msg.textContent = t('adminBad'); return; }
+    store.wipeAllLocal();
+    state.player = null;
+    state.playerName = null;
+    state.cloudPlayers = [];
+    msg.textContent = t('adminOk', { p: out.players, s: out.scores });
+    renderPlayers();
+  } catch (e) {
+    msg.textContent = t('adminOffline');
+  }
+}
+$('btn-admin-run').addEventListener('click', runAdminWipe);
+$('admin-pass').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); runAdminWipe(); }
+});
+
 // ---------- leaderboard screen ----------
 
 async function renderLeaderboard(sel) {
@@ -639,7 +680,6 @@ function newSession(mode, extra = {}) {
 // (the veil fades out via CSS, the layout re-fits under the hud).
 async function enterGame() {
   await ensureMap();
-  state.keepCorrection = false;
   show('screen-game');
   state.map.refit();
 }
@@ -737,13 +777,10 @@ function nextQuestion() {
 
   state.phase = 'asking';
   state.map.enabled = true;
-  // The camera stays wherever the player left it — no reset between
-  // questions. After a miss the correction (both countries + arrow) stays
-  // on screen for study; it is cleared when the player answers.
-  if (!state.keepCorrection) {
-    state.map.cancelAnimations();
-    state.map.clearHighlights();
-  }
+  // Clear the previous feedback (flash, correction arrow) but keep the
+  // camera wherever the player left it — no recentering between questions.
+  state.map.cancelAnimations();
+  state.map.clearHighlights();
 
   let name;
   if (s.mode === 'review') {
@@ -773,10 +810,6 @@ function onValidate(feature) {
 
   state.phase = 'feedback';
   state.map.enabled = false;
-  if (state.keepCorrection) {
-    state.map.clearHighlights();
-    state.keepCorrection = false;
-  }
 
   const s = state.session;
   s.asked++;
@@ -807,7 +840,6 @@ function handleMiss(clicked, target) {
   const nearMiss = clicked != null && state.map.isNeighbor(clicked, target);
   s.streak = 0;
   s.misses.push(target);
-  state.keepCorrection = true;
   if (s.mode === 'training') {
     s.needs[target] = TRAIN_GOAL;
     requeue(s.queue, target, 2);
@@ -855,10 +887,6 @@ function giveUp() {
   if (state.phase !== 'asking') return;
   state.phase = 'feedback';
   state.map.enabled = false;
-  if (state.keepCorrection) {
-    state.map.clearHighlights();
-    state.keepCorrection = false;
-  }
   const s = state.session;
   s.asked++;
   sched.recordResult(state.player, state.target, false);
@@ -1011,7 +1039,6 @@ function openSummary(s, { title, stars = null, subtitle = '', resumable = false 
   state.map.enabled = false;
   state.map.cancelAnimations();
   state.map.clearHighlights();
-  state.keepCorrection = false;
   if (missed.length) {
     for (const n of missed) state.map.highlight(n, 'missed-reveal');
     state.map.zoomToFeatures(missed, 900, 0.8);
