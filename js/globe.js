@@ -38,9 +38,11 @@ export class GlobeMap {
       .style('background', '#e9eef2');
 
     this.k = 1;
+    // -18 tilt matches the ambient resting position, so the first ambient
+    // pass needs no reset animation at boot.
     this.projection = d3.geoOrthographic()
       .clipAngle(90)
-      .rotate(this.opts.rotate || [-10, -20]);
+      .rotate(this.opts.rotate || [-10, -18]);
     this._applyLayout();
     this.path = d3.geoPath(this.projection);
 
@@ -158,10 +160,17 @@ export class GlobeMap {
       this.enabled = false;
       this.clearHighlights();
       this.cancelAnimations();
-      const [l] = this.projection.rotate();
-      this._animateTo([-l, 18], 1, 700, () => {
-        if (this.ambient) this._startSpin();
-      });
+      // Only animate the reset when coming back from a zoomed game view;
+      // at boot (k already 1) start the slow spin directly — no wasted
+      // 700ms of full-rate rendering on the load critical path.
+      if (this.k > 1.02) {
+        const [l] = this.projection.rotate();
+        this._animateTo([-l, 18], 1, 700, () => {
+          if (this.ambient) this._startSpin();
+        });
+      } else {
+        this._startSpin();
+      }
     } else {
       this._stopSpin();
     }
@@ -170,12 +179,27 @@ export class GlobeMap {
 
   _startSpin() {
     if (this._spin) return;
+    // Keep the first spin out of the page-load window: its per-frame cost
+    // would otherwise inflate FCP/LCP/TBT. The globe still shows at once,
+    // it just begins rotating shortly after `load`. Later spins (e.g. back
+    // from a game) start immediately.
+    if (!this._spunOnce && document.readyState !== 'complete') {
+      window.addEventListener('load', () => setTimeout(() => {
+        if (this.ambient) this._startSpin();
+      }, 400), { once: true });
+      return;
+    }
+    this._spunOnce = true;
     this._lastSpinT = 0;
     const step = (t) => {
       if (!this.ambient) { this._spin = null; return; }
       if (!this._lastSpinT) this._lastSpinT = t;
       const dt = t - this._lastSpinT;
-      if (dt > 40) { // ~25fps
+      // ~15fps is plenty for a slowly rotating background and roughly halves
+      // the per-second projection cost (rotation stays dt-proportional, so
+      // the visual speed is unchanged). Browsers already pause rAF in
+      // hidden tabs, so no extra visibility handling is needed.
+      if (dt > 66) {
         const [l, p] = this.projection.rotate();
         this.projection.rotate([l + dt * 0.004, p, 0]);
         this._lastSpinT = t;
@@ -206,19 +230,24 @@ export class GlobeMap {
     this.countryPaths
       .attr('d', f => this.path(f))
       .attr('stroke-width', 0.5 / Math.sqrt(this.k));
-    this.hitPaths
-      .attr('d', f => this.path(f))
-      .style('display', this.k >= 1.6 ? null : 'none');
-    const center = this._viewCenter();
-    const showMarkers = this.k >= 1.6;
-    this.markers
-      .attr('transform', f => {
-        const p = this.projection(this.markerLL.get(f.properties.name));
-        return p ? `translate(${p[0]},${p[1]})` : null;
-      })
-      .style('display', f => showMarkers
-        && d3.geoDistance(this.markerLL.get(f.properties.name), center) < Math.PI / 2 - 0.05
-        ? null : 'none');
+    // Tiny-country hit areas / ring markers only matter above the ring-zoom
+    // threshold — below it (including every ambient spin frame) skip
+    // projecting their ~60 paths/points entirely.
+    if (this.k >= 1.6) {
+      const center = this._viewCenter();
+      this.hitPaths.attr('d', f => this.path(f)).style('display', null);
+      this.markers
+        .attr('transform', f => {
+          const p = this.projection(this.markerLL.get(f.properties.name));
+          return p ? `translate(${p[0]},${p[1]})` : null;
+        })
+        .style('display', f =>
+          d3.geoDistance(this.markerLL.get(f.properties.name), center) < Math.PI / 2 - 0.05
+          ? null : 'none');
+    } else {
+      this.hitPaths.style('display', 'none');
+      this.markers.style('display', 'none');
+    }
     this._renderOverlay();
   }
 
