@@ -15,10 +15,11 @@ export class GlobeMap {
     this.cb = callbacks; // { onValidate(feature), labelFor(name) }
     this.enabled = false;
 
-    const { features, byName, neighbors } = buildGeoData(world);
+    const { features, byName, neighbors, tiny } = buildGeoData(world);
     this.features = features;
     this.byName = byName;
     this.neighbors = neighbors;
+    this.tiny = tiny;
 
     this._arrow = null;   // {coords: [[lon,lat],...]}
     this._labels = [];    // {name, kind, lonlat}
@@ -57,6 +58,23 @@ export class GlobeMap {
       .attr('class', f => 'country' + (this.playable.has(f.properties.name) ? '' : ' territory'))
       .attr('fill', f => this.colors.get(f.properties.name))
       .attr('stroke', '#ffffff')
+      .on('click', (event, f) => {
+        if (!this.enabled || event.defaultPrevented) return;
+        event.stopPropagation();
+        this.cb.onValidate(f);
+      });
+
+    // Invisible enlarged hit outlines for tiny countries (see WorldMap).
+    this.hitPaths = this.svg.append('g').selectAll('path.hit')
+      .data(this.features.filter(f =>
+        this.playable.has(f.properties.name) && this.tiny.has(f.properties.name)))
+      .join('path')
+      .attr('class', 'hit')
+      .attr('fill', 'none')
+      .attr('stroke', 'transparent')
+      .attr('stroke-width', 16)
+      .style('pointer-events', 'stroke')
+      .style('display', 'none')
       .on('click', (event, f) => {
         if (!this.enabled || event.defaultPrevented) return;
         event.stopPropagation();
@@ -114,6 +132,9 @@ export class GlobeMap {
     this.countryPaths
       .attr('d', f => this.path(f))
       .attr('stroke-width', 0.5 / Math.sqrt(this.k));
+    this.hitPaths
+      .attr('d', f => this.path(f))
+      .style('display', this.k >= 1.6 ? null : 'none');
     this._renderOverlay();
   }
 

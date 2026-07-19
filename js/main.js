@@ -12,6 +12,8 @@ import { WorldMap, mainGeometry } from './map.js';
 import { GlobeMap } from './globe.js';
 import { t, setLang, getLang } from './i18n.js';
 import * as cloud from './cloud.js';
+import { icon } from './icons.js';
+import * as bgGlobe from './bgglobe.js';
 
 const d3 = window.d3;
 const $ = id => document.getElementById(id);
@@ -47,18 +49,28 @@ function playerLevels() {
 // ---------- i18n ----------
 
 function applyStaticI18n() {
-  document.querySelectorAll('[data-i18n]').forEach(el => {
+  document.querySelectorAll('[data-i18n]:not([data-icon])').forEach(el => {
     el.textContent = t(el.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n][data-icon]').forEach(el => {
+    el.innerHTML = icon(el.dataset.icon) + `<span>${t(el.dataset.i18n)}</span>`;
   });
   document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
     el.placeholder = t(el.dataset.i18nPlaceholder);
   });
+  document.querySelectorAll('.logo-ico').forEach(el => { el.innerHTML = icon('globe'); });
+  document.querySelectorAll('.switch-ico').forEach(el => { el.innerHTML = icon('users'); });
+  document.querySelectorAll('#map-switch button').forEach(b => {
+    b.innerHTML = icon(b.dataset.mode === '2d' ? 'map' : 'globe') +
+      `<span>${b.dataset.mode === '2d' ? '2D' : '3D'}</span>`;
+  });
   $('prompt-label').textContent = t('find');
-  $('btn-world').textContent = t('worldView');
-  $('btn-dontknow').textContent = t('showMe');
-  $('btn-end').textContent = t('endSession');
+  $('btn-world').innerHTML = icon('compass') + `<span>${t('worldView')}</span>`;
+  $('btn-dontknow').innerHTML = icon('eye') + `<span>${t('showMe')}</span>`;
+  $('btn-end').innerHTML = icon('stop') + `<span>${t('endSession')}</span>`;
   $('btn-next').textContent = t('next');
   updateMapModeUi();
+  updateOnlineBadge();
   document.documentElement.lang = getLang();
   // [data-lang] scope: the 2D/3D switch shares the .lang-switch styling
   // but must not be touched by the language logic.
@@ -81,10 +93,26 @@ document.querySelectorAll('.lang-switch button[data-lang]').forEach(b =>
 
 // ---------- screens ----------
 
+// Menu-style screens get the slowly rotating globe in the background.
+const BG_SCREENS = new Set(['screen-players', 'screen-menu', 'screen-stats',
+  'screen-countries', 'screen-leaderboard']);
+
+let worldPromise = null;
+function loadWorld() {
+  worldPromise = worldPromise || fetch('data/countries-50m.json').then(r => r.json());
+  return worldPromise;
+}
+
 function show(id) {
   document.body.classList.remove('summary-open');
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   $(id).classList.add('active');
+  state.currentScreen = id;
+  if (BG_SCREENS.has(id)) {
+    loadWorld().then(w => { if (BG_SCREENS.has(state.currentScreen)) bgGlobe.start(w); });
+  } else {
+    bgGlobe.stop();
+  }
 }
 
 // ---------- player screen (with PIN + cloud) ----------
@@ -275,7 +303,8 @@ async function refreshCloudPlayers() {
 function updateOnlineBadge() {
   const el = $('online-badge');
   const on = cloud.isOnline();
-  el.textContent = on ? t('onlineBadge') : t('offlineBadge');
+  el.innerHTML = icon(on ? 'cloud' : 'cloudOff') +
+    `<span>${on ? t('onlineBadge') : t('offlineBadge')}</span>`;
   el.classList.toggle('off', !on);
 }
 cloud.onStatus(updateOnlineBadge);
@@ -306,7 +335,7 @@ function renderMenu() {
           last: `${rec.lastScore}/${total}`, high: `${rec.highScore}/${total}` })}</span>`
       : '';
     card.innerHTML = `
-      <span class="level-num l${lvl.n}">${lvl.slam ? '👑' : lvl.n}</span>
+      <span class="level-num l${lvl.n}">${lvl.slam ? icon('crown') : lvl.n}</span>
       <span class="level-body">
         <span class="level-title">${escapeHtml(levelTitle(lvl))}</span>
         <span class="level-meta">${t('countriesCount', { n: total })} · ${t('statusCounts', { k: known, l: learning })}</span>
@@ -360,12 +389,12 @@ async function renderLeaderboard(sel) {
   const mkTab = (key, label) => {
     const b = document.createElement('button');
     b.className = 'lb-tab' + (String(state.lbSel) === String(key) ? ' on' : '');
-    b.textContent = label;
+    b.innerHTML = label;
     b.addEventListener('click', () => renderLeaderboard(key));
     tabs.appendChild(b);
   };
   mkTab('total', t('lbTotal'));
-  for (const lvl of LEVELS) mkTab(lvl.n, lvl.slam ? '👑' : String(lvl.n));
+  for (const lvl of LEVELS) mkTab(lvl.n, lvl.slam ? icon('crown') : String(lvl.n));
 
   const body = $('lb-body');
   let rows = state.lbRows;
@@ -395,7 +424,7 @@ async function renderLeaderboard(sel) {
       <tbody>${list.map(([name, a], i) => `
         <tr class="${name === me ? 'me' : ''}"><td class="num">${i + 1}</td>
         <td>${escapeHtml(name)}</td><td class="num">${a.sum}</td>
-        <td class="num">${a.gold ? '🏅'.repeat(Math.min(a.gold, 10)) : '—'}</td></tr>`).join('')}
+        <td class="num gold-cell">${a.gold ? icon('medal') + '×' + a.gold : '—'}</td></tr>`).join('')}
       </tbody></table>` : `<p class="hint">${t('lbEmpty')}</p>`;
   } else {
     const lvl = LEVELS.find(l => l.n === Number(sel));
@@ -536,7 +565,7 @@ async function ensureMap() {
   const mode = store.getMapMode();
   if (state.map && state.mapBuiltMode === mode) return;
   if (!state.world) {
-    state.world = await fetch('data/countries-50m.json').then(r => r.json());
+    state.world = await loadWorld();
   }
   $('map').innerHTML = '';
   const MapCls = mode === 'globe' ? GlobeMap : WorldMap;
@@ -553,7 +582,9 @@ function updateMapModeUi() {
   document.querySelectorAll('#map-switch button').forEach(b =>
     b.classList.toggle('on', b.dataset.mode === mode));
   // The hud button shows the mode you would switch TO.
-  $('btn-mapmode').textContent = mode === 'globe' ? '🗺️ 2D' : '🌐 3D';
+  $('btn-mapmode').innerHTML = mode === 'globe'
+    ? icon('map') + '<span>2D</span>'
+    : icon('globe') + '<span>3D</span>';
   $('zoom-hint').textContent = t(mode === 'globe' ? 'clickHintGlobe' : 'clickHint');
 }
 
@@ -722,7 +753,7 @@ function onValidate(feature) {
     state.map.highlight(target, 'correct-flash');
     const pt = state.map.screenPointOf(target);
     confettiBurst(pt ? pt[0] : state.map.width / 2, pt ? pt[1] : state.map.height / 2);
-    popFeedback('✓', s.streak >= 3 ? t('streakRow', { n: s.streak }) : '');
+    popFeedback('✓', s.streak >= 3 ? icon('flame') + t('streakRow', { n: s.streak }) : '');
     store.persist();
     updateHud();
     setTimeout(nextQuestion, 700);
@@ -803,8 +834,10 @@ function popFeedback(main, sub) {
 function updateHud() {
   const s = state.session;
   if (!s) return;
-  $('hud-perfect').innerHTML = s.misses.length === 0 ? t('perfectChip') : '';
-  $('hud-streak').innerHTML = s.streak >= 2 ? t('streakRow', { n: s.streak }) : '';
+  $('hud-perfect').innerHTML = s.misses.length === 0
+    ? icon('sparkle') + `<span>${t('perfectChip')}</span>` : '';
+  $('hud-streak').innerHTML = s.streak >= 2
+    ? icon('flame') + `<span>${t('streakRow', { n: s.streak })}</span>` : '';
   if (s.mode === 'series') {
     $('hud-score').textContent = `${s.correct}/${s.total}`;
     $('hud-qcount').textContent = t('questionOf', { i: Math.min(s.asked + 1, s.total), n: s.total });
@@ -896,13 +929,15 @@ function openSummary(s, { title, stars = null, subtitle = '' }) {
   const trainBtn = $('btn-training');
   if (missed.length && s.levelN) {
     trainBtn.classList.remove('hidden');
-    trainBtn.textContent = t('trainBtn', { n: missed.length });
+    trainBtn.innerHTML = icon('target') + `<span>${t('trainBtn', { n: missed.length })}</span>`;
     state.lastSeries = { levelN: s.levelN, missed };
   } else {
     trainBtn.classList.add('hidden');
     if (s.levelN) state.lastSeries = { levelN: s.levelN, missed: [] };
   }
-  $('btn-again').textContent = s.mode === 'review' ? t('reviewAgainBtn') : t('replayBtn');
+  $('btn-again').innerHTML = s.mode === 'review'
+    ? icon('repeat') + `<span>${t('reviewAgainBtn')}</span>`
+    : icon('replay') + `<span>${t('replayBtn')}</span>`;
   $('btn-again').dataset.mode = s.mode === 'review' ? 'review' : 'series';
   $('btn-again').dataset.level = s.levelN || '';
   $('btn-summary-menu').textContent = t('menuBtn');
@@ -1007,6 +1042,7 @@ applyStaticI18n();
 renderPlayers();
 const last = store.getLastPlayer();
 if (last) selectPlayer(last);
+else show('screen-players'); // starts the background globe
 
 // Probe the leaderboard backend; offline mode is fine, we retry on use.
 cloud.ping().then(ok => {

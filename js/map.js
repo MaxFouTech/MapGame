@@ -31,7 +31,12 @@ export function buildGeoData(world) {
     neighbors.set(g.properties.name,
       new Set(neighborIdx[i].map(j => allGeoms[j].properties.name)));
   });
-  return { features, byName, neighbors };
+  // Countries too small to click comfortably get an enlarged hit area
+  // (transparent stroke around their outline, enabled once zoomed in).
+  const tiny = new Set(features
+    .filter(f => d3.geoArea(f) < 1e-4) // ≈ under ~4000 km²
+    .map(f => f.properties.name));
+  return { features, byName, neighbors, tiny };
 }
 
 // Greedy graph coloring: countries sharing a border, or with nearby
@@ -93,10 +98,11 @@ export class WorldMap {
     this.cb = callbacks; // { onValidate(feature), labelFor(name) }
     this.enabled = false;
 
-    const { features, byName, neighbors } = buildGeoData(world);
+    const { features, byName, neighbors, tiny } = buildGeoData(world);
     this.features = features;
     this.byName = byName;
     this.neighbors = neighbors;
+    this.tiny = tiny;
 
     this._build();
   }
@@ -137,6 +143,21 @@ export class WorldMap {
       .attr('stroke-width', 0.5)
       .on('click', (event, f) => this._onCountryClick(event, f));
 
+    // Invisible enlarged hit outlines for tiny countries, active when
+    // zoomed in enough that they can't swallow big neighbours' clicks.
+    this.hitPaths = this.g.append('g').selectAll('path.hit')
+      .data(this.features.filter(f =>
+        this.playable.has(f.properties.name) && this.tiny.has(f.properties.name)))
+      .join('path')
+      .attr('class', 'hit')
+      .attr('d', this.path)
+      .attr('fill', 'none')
+      .attr('stroke', 'transparent')
+      .attr('stroke-width', 16)
+      .style('pointer-events', 'stroke')
+      .style('display', 'none')
+      .on('click', (event, f) => this._onCountryClick(event, f));
+
     // Keep overlay on top of country paths.
     this.overlay.raise();
 
@@ -148,6 +169,9 @@ export class WorldMap {
         this.k = event.transform.k;
         this.g.attr('transform', event.transform);
         this.g.selectAll('path.country').attr('stroke-width', 0.5 / Math.sqrt(this.k));
+        this.hitPaths
+          .attr('stroke-width', 18 / this.k)
+          .style('display', this.k >= 2.2 ? null : 'none');
         this._scaleOverlay();
       });
     this.svg.call(this.zoom).on('dblclick.zoom', null);
@@ -167,6 +191,7 @@ export class WorldMap {
     this.svg.attr('viewBox', `0 0 ${this.width} ${this.height}`);
     this._fitProjection();
     this.countryPaths.attr('d', this.path);
+    this.hitPaths.attr('d', this.path);
   }
 
   // A click on a country is always an answer — the player manages zoom and

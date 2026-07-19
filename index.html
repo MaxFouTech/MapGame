@@ -17,7 +17,7 @@
     <div class="lang-switch" id="lang-switch-players">
       <button data-lang="fr">FR</button><button data-lang="en">EN</button>
     </div>
-    <h1 class="logo">🌍 MapGame</h1>
+    <h1 class="logo"><span class="logo-ico"></span>MapGame</h1>
     <p class="tagline" data-i18n="tagline"></p>
     <div id="player-list" class="player-list"></div>
     <p id="cloud-players-title" class="hint hidden" data-i18n="cloudPlayers"></p>
@@ -48,15 +48,15 @@
 <div id="screen-menu" class="screen">
   <div class="panel wide">
     <div class="menu-head">
-      <h1 class="logo small">🌍 MapGame</h1>
+      <h1 class="logo small"><span class="logo-ico"></span>MapGame</h1>
       <div class="menu-head-right">
         <div class="lang-switch map-switch" id="map-switch">
-          <button data-mode="2d">🗺️ 2D</button><button data-mode="globe">🌐 3D</button>
+          <button data-mode="2d">2D</button><button data-mode="globe">3D</button>
         </div>
         <div class="lang-switch" id="lang-switch-menu">
           <button data-lang="fr">FR</button><button data-lang="en">EN</button>
         </div>
-        <button id="btn-switch-player" class="btn ghost">⇄ <span id="menu-player-name"></span></button>
+        <button id="btn-switch-player" class="btn ghost"><span class="switch-ico"></span><span id="menu-player-name"></span></button>
       </div>
     </div>
 
@@ -65,15 +65,15 @@
     <div id="level-grid" class="level-grid"></div>
 
     <div class="menu-actions">
-      <button id="btn-review" class="btn primary" data-i18n="reviewBtn"></button>
-      <button id="btn-leaderboard" class="btn ghost" data-i18n="leaderboardBtn"></button>
-      <button id="btn-countries" class="btn ghost" data-i18n="countryListBtn"></button>
-      <button id="btn-stats" class="btn ghost" data-i18n="myProgress"></button>
+      <button id="btn-review" class="btn primary" data-i18n="reviewBtn" data-icon="repeat"></button>
+      <button id="btn-leaderboard" class="btn ghost" data-i18n="leaderboardBtn" data-icon="trophy"></button>
+      <button id="btn-countries" class="btn ghost" data-i18n="countryListBtn" data-icon="book"></button>
+      <button id="btn-stats" class="btn ghost" data-i18n="myProgress" data-icon="chart"></button>
     </div>
     <div class="menu-footer">
       <span id="online-badge" class="online-badge"></span>
       <span class="menu-footer-spacer"></span>
-      <button id="btn-reset" class="btn ghost danger small" data-i18n="resetBtn"></button>
+      <button id="btn-reset" class="btn ghost danger small" data-i18n="resetBtn" data-icon="reset"></button>
       <span id="reset-confirm" class="hidden">
         <span data-i18n="resetConfirm"></span>
         <button id="btn-reset-yes" class="btn danger small" data-i18n="resetYes"></button>
