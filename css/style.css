@@ -21,7 +21,9 @@ body {
 }
 button { font: inherit; cursor: pointer; }
 
-.screen { display: none; height: 100vh; }
+/* 100dvh tracks the *visible* viewport on mobile (URL bar shown/hidden),
+   unlike 100vh which can leave the top or bottom behind browser chrome. */
+.screen { display: none; height: 100vh; height: 100dvh; }
 .screen.active { display: flex; align-items: center; justify-content: center; }
 #screen-game.active { display: block; }
 
@@ -42,9 +44,12 @@ body.summary-open .feedback, body.summary-open .points-popup { display: none !im
   padding: 36px 42px;
   width: min(480px, 92vw);
   text-align: center;
+  /* Panels must scroll internally on small screens (body never scrolls). */
+  max-height: calc(100dvh - 20px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .panel.wide { width: min(680px, 94vw); text-align: left; }
-.panel.scroll { max-height: 92vh; overflow-y: auto; }
 
 .logo { font-size: 2.2rem; margin-bottom: 6px; }
 .logo.small { font-size: 1.4rem; margin-bottom: 0; }
@@ -211,7 +216,9 @@ h3 { margin: 22px 0 6px; }
 
 /* ===== game ===== */
 #map { position: absolute; inset: 0; }
-#map svg { display: block; }
+/* Give ALL touch gestures on the map to d3 (pan, pinch); without this the
+   browser swallows one-finger drags after a pinch zoom. */
+#map svg { display: block; touch-action: none; }
 .country { cursor: pointer; }
 .country:hover { filter: brightness(.92); }
 .country.territory { cursor: default; }
@@ -233,8 +240,16 @@ h3 { margin: 22px 0 6px; }
    space between their cards/buttons. */
 .hud { position: absolute; z-index: 10; display: flex; gap: 12px; pointer-events: none; }
 .hud-card, .hudbtn { pointer-events: auto; }
-.hud-top { top: 14px; left: 14px; right: 14px; justify-content: space-between; align-items: flex-start; }
-.hud-bottom { bottom: 14px; left: 14px; }
+.hud-top {
+  top: max(14px, env(safe-area-inset-top));
+  left: max(14px, env(safe-area-inset-left));
+  right: max(14px, env(safe-area-inset-right));
+  justify-content: space-between; align-items: flex-start;
+}
+.hud-bottom {
+  bottom: max(14px, env(safe-area-inset-bottom));
+  left: max(14px, env(safe-area-inset-left));
+}
 .hud-card {
   background: rgba(255, 255, 255, .92); backdrop-filter: blur(6px);
   border-radius: 14px; padding: 12px 18px;
@@ -289,8 +304,16 @@ h3 { margin: 22px 0 6px; }
 
 /* Landscape phones: shrink the hud so the map keeps the space. */
 @media (max-height: 520px) {
-  .hud-top { top: 8px; left: 8px; right: 8px; }
-  .hud-bottom { bottom: 8px; left: 8px; gap: 8px; }
+  .hud-top {
+    top: max(8px, env(safe-area-inset-top));
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+  }
+  .hud-bottom {
+    bottom: max(8px, env(safe-area-inset-bottom));
+    left: max(8px, env(safe-area-inset-left));
+    gap: 8px;
+  }
   .hud-card { padding: 7px 12px; border-radius: 10px; }
   .prompt-label { font-size: .62rem; }
   .prompt-country { font-size: 1.05rem; }
