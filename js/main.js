@@ -922,7 +922,14 @@ function missBadges(s) {
   return s.asked > 0 ? `<p class="hint">${t('nothingToReview')}</p>` : '';
 }
 
-function openSummary(s, { title, stars = null, subtitle = '' }) {
+function openSummary(s, { title, stars = null, subtitle = '', resumable = false }) {
+  const resBtn = $('btn-resume');
+  if (resumable) {
+    resBtn.classList.remove('hidden');
+    resBtn.innerHTML = icon('play') + `<span>${t('resumeBtn')}</span>`;
+  } else {
+    resBtn.classList.add('hidden');
+  }
   $('summary-title').textContent = title;
   const starsEl = $('summary-stars');
   if (stars == null) {
@@ -991,7 +998,9 @@ function endTraining() {
   });
 }
 
-// "End session" button: normal ending for review, early stop for series/training.
+// "End session" button: normal ending for review; for series/training the
+// session is paused and resumable — its stats are only flushed if the
+// player leaves the summary without resuming.
 function endSessionEarly() {
   const s = state.session;
   if (!s) return;
@@ -999,9 +1008,16 @@ function endSessionEarly() {
     commonSessionSave(s);
     openSummary(s, { title: t('sessionComplete') });
   } else {
-    commonSessionSave(s);
-    openSummary(s, { title: t('endedEarly') });
+    if (state.phase === 'asking' && state.target) s.queue.unshift(state.target);
+    state.pausedSession = s;
+    openSummary(s, { title: t('endedEarly'), resumable: true });
   }
+}
+
+function flushPausedSession() {
+  if (!state.pausedSession) return;
+  commonSessionSave(state.pausedSession);
+  state.pausedSession = null;
 }
 
 // After a mistake, a plain click anywhere on the map moves on to the next
@@ -1013,15 +1029,29 @@ $('map').addEventListener('click', e => {
 
 $('btn-dontknow').addEventListener('click', giveUp);
 $('btn-end').addEventListener('click', endSessionEarly);
+$('btn-resume').addEventListener('click', () => {
+  const s = state.pausedSession;
+  if (!s) return;
+  state.pausedSession = null;
+  state.session = s;
+  show('screen-game');
+  nextQuestion();
+});
 $('btn-training').addEventListener('click', () => {
+  flushPausedSession();
   if (state.lastSeries?.missed.length) startTraining(state.lastSeries.levelN, state.lastSeries.missed);
 });
 $('btn-again').addEventListener('click', e => {
+  flushPausedSession();
   const mode = e.currentTarget.dataset.mode;
   if (mode === 'review') startReview();
   else startSeries(Number(e.currentTarget.dataset.level) || state.lastSeries?.levelN || 1);
 });
-$('btn-summary-menu').addEventListener('click', () => { renderMenu(); show('screen-menu'); });
+$('btn-summary-menu').addEventListener('click', () => {
+  flushPausedSession();
+  renderMenu();
+  show('screen-menu');
+});
 
 document.addEventListener('keydown', e => {
   if (state.phase === 'feedback' && state.session
