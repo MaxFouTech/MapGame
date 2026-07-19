@@ -13,6 +13,8 @@ import { GlobeMap } from './globe.js';
 import { t, setLang, getLang } from './i18n.js';
 import * as cloud from './cloud.js';
 import { icon } from './icons.js';
+import { flagHtml } from './flags.js';
+import * as themes from './themes.js';
 
 const d3 = window.d3;
 const $ = id => document.getElementById(id);
@@ -346,8 +348,9 @@ function nextSequenceLevel() {
 function renderMenu() {
   $('menu-player-name').textContent = state.playerName;
   const seq = nextSequenceLevel();
-  $('btn-play').innerHTML = icon('play') + `<span>${t('playBtn', { n: seq })}</span>`;
+  $('btn-play').innerHTML = icon('play') + `<span>${t('playBtn')}</span>`;
   $('btn-play').dataset.level = seq;
+  $('play-sub').textContent = t('playSub', { n: seq });
   const grid = $('level-grid');
   grid.innerHTML = '';
   const lv = playerLevels();
@@ -584,7 +587,7 @@ function renderCountryList() {
       .sort((a, b) => a.d.localeCompare(b.d))
       .map(({ n, d }) => {
         const st = sched.statusOf(state.player.records[n]);
-        return `<span class="country-chip ${st}">${escapeHtml(d)}</span>`;
+        return `<span class="country-chip ${st}">${flagHtml(n)}${escapeHtml(d)}</span>`;
       }).join('');
     sec.innerHTML = `
       <div class="country-section-head">
@@ -628,7 +631,7 @@ function renderStats() {
   $('stats-weakest').innerHTML = rows.length
     ? `<ol class="weak-list">${rows.map(r => {
         const acc = Math.round(100 * sched.accuracy(r.rec));
-        return `<li><b>${escapeHtml(displayName(r.n))}</b>
+        return `<li><b>${flagHtml(r.n)}${escapeHtml(displayName(r.n))}</b>
           ${levelBadge(levelOf(r.n))}
           <span class="weak-acc">${t('weakAcc', { p: acc, c: r.rec.c, a: r.rec.a })}</span></li>`;
       }).join('')}</ol>`
@@ -644,7 +647,7 @@ function renderStats() {
       const st = sched.statusOf(rec);
       const acc = sched.accuracy(rec);
       return `<tr>
-        <td>${escapeHtml(displayName(n))}</td>
+        <td>${flagHtml(n)}${escapeHtml(displayName(n))}</td>
         <td>${levelBadge(levelOf(n))}</td>
         <td><span class="status ${st}">${t('status_' + st)}</span></td>
         <td>${acc == null ? '—' : t('accCell', { p: Math.round(acc * 100), c: rec.c, a: rec.a })}</td>
@@ -680,9 +683,9 @@ function renderEvolution(p) {
 
 // ---------- game ----------
 
-async function ensureMap() {
+async function ensureMap(force = false) {
   const mode = store.getMapMode();
-  if (state.map && state.mapBuiltMode === mode) return;
+  if (!force && state.map && state.mapBuiltMode === mode) return;
   if (!state.world) {
     state.world = await loadWorld();
   }
@@ -727,6 +730,60 @@ async function setMapMode(mode) {
 
 document.querySelectorAll('#map-switch button').forEach(b =>
   b.addEventListener('click', () => setMapMode(b.dataset.mode)));
+
+// ---------- display options (theme + country names) ----------
+
+function renderThemeGrid() {
+  const active = store.getTheme();
+  $('theme-grid').innerHTML = themes.THEME_ORDER.map(key => {
+    const th = themes.THEMES[key];
+    const strip = th.palette.slice(0, 6).map(c => `<span style="background:${c}"></span>`).join('');
+    return `<button class="theme-swatch${key === active ? ' on' : ''}" data-theme="${key}">
+      <span class="sw-strip" style="background:${th.ocean}">${strip}</span>
+      <span class="sw-name">${th.name[getLang()] || th.name.en}</span>
+    </button>`;
+  }).join('');
+}
+
+async function applyTheme(key) {
+  store.setTheme(key);
+  themes.setActiveTheme(key);
+  // Update the active highlight in place (no innerHTML rebuild — that would
+  // detach the just-clicked button and close the popover).
+  document.querySelectorAll('.theme-swatch').forEach(b =>
+    b.classList.toggle('on', b.dataset.theme === key));
+  if (state.map) {
+    const wasAsking = state.phase === 'asking' && state.session;
+    await ensureMap(true); // force: same map mode, only colours changed
+    if (wasAsking) state.map.enabled = true;
+  }
+}
+
+$('btn-display').addEventListener('click', () => {
+  const panel = $('display-panel');
+  panel.classList.toggle('hidden');
+  if (!panel.classList.contains('hidden')) {
+    renderThemeGrid();
+    $('show-names-toggle').checked = store.getShowNames();
+  }
+});
+$('theme-grid').addEventListener('click', e => {
+  const btn = e.target.closest('.theme-swatch');
+  if (btn) applyTheme(btn.dataset.theme);
+});
+$('show-names-toggle').addEventListener('change', e => {
+  store.setShowNames(e.target.checked);
+  // Apply immediately if a question is on screen.
+  if (state.session && state.target && state.phase === 'asking') renderPrompt(state.target);
+});
+// Close the popover when clicking outside it.
+document.addEventListener('click', e => {
+  const panel = $('display-panel');
+  if (panel.classList.contains('hidden')) return;
+  if (!panel.contains(e.target) && e.target.closest('#btn-display') == null) {
+    panel.classList.add('hidden');
+  }
+});
 
 
 function newSession(mode, extra = {}) {
@@ -826,6 +883,17 @@ function requeue(queue, name, minAhead = 2) {
   queue.splice(pos, 0, name);
 }
 
+// The prompt shows the flag before the name; with names hidden, only a large
+// flag is shown as the hint.
+function renderPrompt(name) {
+  const showNames = store.getShowNames();
+  const el = $('prompt-country');
+  el.classList.toggle('flag-only', !showNames);
+  el.innerHTML = showNames
+    ? flagHtml(name) + `<span class="prompt-name">${escapeHtml(displayName(name))}</span>`
+    : flagHtml(name, 'flag-xl');
+}
+
 function nextQuestion() {
   const s = state.session;
   if (!s) return;
@@ -842,7 +910,7 @@ function nextQuestion() {
 
   let name;
   if (s.mode === 'review') {
-    name = sched.pickTarget(state.player, PLAYABLE, state.recentAsked, state.forcedQueue);
+    name = sched.pickTarget(state.player, PLAYABLE, state.recentAsked, state.forcedQueue, levelOf);
     state.recentAsked.push(name);
   } else {
     name = s.queue.shift();
@@ -851,7 +919,7 @@ function nextQuestion() {
   state.askedAt = performance.now();
 
   const lvlN = levelOf(name);
-  $('prompt-country').textContent = displayName(name);
+  renderPrompt(name);
   $('prompt-tier').innerHTML = `<span class="badge l${lvlN}">${t('levelShort', { n: lvlN })}</span>`;
   const hint = $('zoom-hint');
   hint.classList.remove('cont');
@@ -1048,7 +1116,7 @@ function missBadges(s) {
   const missSet = [...new Set(s.misses)];
   if (missSet.length) {
     return `<h3>${t('toReview')}</h3><p class="miss-list">${missSet.map(n =>
-      `<span class="badge l${levelOf(n)}">${escapeHtml(displayName(n))}</span>`).join(' ')}</p>`;
+      `<span class="badge l${levelOf(n)}">${flagHtml(n)}${escapeHtml(displayName(n))}</span>`).join(' ')}</p>`;
   }
   // "Nothing to review" only means something if questions were answered.
   return s.asked > 0 ? `<p class="hint">${t('nothingToReview')}</p>` : '';
@@ -1217,6 +1285,7 @@ function escapeHtml(s) {
 
 setLang(store.getStoredLang() ||
   ((navigator.language || '').toLowerCase().startsWith('fr') ? 'fr' : 'en'));
+themes.setActiveTheme(store.getTheme());
 applyStaticI18n();
 renderPlayers();
 const last = store.getLastPlayer();
@@ -1238,10 +1307,14 @@ window.__mapgame = {
   state,
   forceTarget(name) {
     state.target = name;
-    $('prompt-country').textContent = displayName(name);
+    renderPrompt(name);
   },
   clickCountry(name) {
     const f = state.map?.byName.get(name);
     if (f) onValidate(f);
+  },
+  setShowNames(v) {
+    store.setShowNames(v);
+    if (state.target) renderPrompt(state.target);
   },
 };

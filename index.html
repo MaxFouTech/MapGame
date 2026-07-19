@@ -89,18 +89,35 @@
         <div class="lang-switch" id="lang-switch-menu">
           <button data-lang="fr">FR</button><button data-lang="en">EN</button>
         </div>
+        <div class="display-wrap">
+          <button id="btn-display" class="btn ghost" data-i18n="displayBtn" data-icon="palette"></button>
+          <div id="display-panel" class="pop-panel hidden">
+            <p class="pop-title" data-i18n="themeTitle"></p>
+            <div id="theme-grid" class="theme-grid"></div>
+            <label class="toggle-row">
+              <input type="checkbox" id="show-names-toggle">
+              <span data-i18n="showNamesLabel"></span>
+            </label>
+            <p class="hint" data-i18n="showNamesHint"></p>
+          </div>
+        </div>
         <button id="btn-switch-player" class="btn ghost"><span class="switch-ico"></span><span id="menu-player-name"></span></button>
       </div>
     </div>
 
-    <h2 data-i18n="chooseLevels"></h2>
+    <div class="start-block">
+      <button id="btn-play" class="btn primary big"></button>
+      <p id="play-sub" class="hint"></p>
+    </div>
+
+    <h2 class="secondary-title" data-i18n="chooseLevels"></h2>
     <p class="hint" data-i18n="levelsHint"></p>
     <div id="level-grid" class="level-grid"></div>
 
-    <div class="menu-actions">
-      <button id="btn-play" class="btn primary big"></button>
-      <button id="btn-review" class="btn ghost" data-i18n="reviewBtn" data-icon="repeat"></button>
-      <button id="btn-hub" class="btn ghost" data-i18n="hubBtn" data-icon="trophy"></button>
+    <div class="menu-actions stacked">
+      <button id="btn-review" class="btn ghost full" data-i18n="reviewBtn" data-icon="repeat"></button>
+      <p class="hint review-sub" data-i18n="reviewSub"></p>
+      <button id="btn-hub" class="btn ghost full" data-i18n="hubBtn" data-icon="trophy"></button>
     </div>
     <div class="menu-footer">
       <span id="online-badge" class="online-badge"></span>

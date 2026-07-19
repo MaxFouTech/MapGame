@@ -110,6 +110,26 @@ export function setMapMode(m) {
   save();
 }
 
+export function getTheme() {
+  return db.theme || 'atlas'; // atlas is the default
+}
+
+export function setTheme(key) {
+  db.theme = key;
+  save();
+}
+
+// Whether the country name is shown in the prompt (default) or hidden so the
+// flag is the only hint.
+export function getShowNames() {
+  return db.showNames !== false;
+}
+
+export function setShowNames(v) {
+  db.showNames = !!v;
+  save();
+}
+
 export function persist() {
   save();
 }

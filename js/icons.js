@@ -23,6 +23,7 @@ const PATHS = {
   compass: '<circle cx="12" cy="12" r="10"/><path d="m16 8-2.5 5.5L8 16l2.5-5.5L16 8Z"/>',
   check: '<path d="M20 6 9 17l-5-5"/>',
   play: '<path d="M7 4.5 19.5 12 7 19.5V4.5Z"/>',
+  palette: '<circle cx="13.5" cy="6.5" r="1.3"/><circle cx="17.5" cy="10.5" r="1.3"/><circle cx="8.5" cy="7.5" r="1.3"/><circle cx="6.5" cy="12.5" r="1.3"/><path d="M12 2a10 10 0 1 0 0 20c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.2a2 2 0 0 1 2-2h1.5A4 4 0 0 0 22 11.5 10 10 0 0 0 12 2Z"/>',
 };
 
 export function icon(name, cls = '') {

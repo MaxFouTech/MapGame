@@ -2,7 +2,8 @@
 // interface as WorldMap: drag to spin, wheel/pinch to zoom, click to
 // answer, great-circle correction arrow on mistakes.
 
-import { buildGeoData, computeColors, mainGeometry, OCEAN } from './map.js';
+import { buildGeoData, computeColors, mainGeometry } from './map.js';
+import { theme } from './themes.js';
 
 const d3 = window.d3;
 
@@ -35,7 +36,7 @@ export class GlobeMap {
     this.svg = d3.select(el).append('svg')
       .attr('viewBox', `0 0 ${this.width} ${this.height}`)
       .attr('width', '100%').attr('height', '100%')
-      .style('background', '#e9eef2');
+      .style('background', theme().background);
 
     this.k = 1;
     // -18 tilt matches the ambient resting position, so the first ambient
@@ -48,7 +49,7 @@ export class GlobeMap {
 
     this.sphere = this.svg.append('path')
       .attr('class', 'globe-ocean')
-      .attr('fill', OCEAN);
+      .attr('fill', theme().ocean);
 
     this.colors = computeColors(this.features, this.neighbors, this.playable);
 
@@ -58,7 +59,7 @@ export class GlobeMap {
       .join('path')
       .attr('class', f => 'country' + (this.playable.has(f.properties.name) ? '' : ' territory'))
       .attr('fill', f => this.colors.get(f.properties.name))
-      .attr('stroke', '#ffffff')
+      .attr('stroke', theme().stroke)
       .on('click', (event, f) => {
         if (!this.enabled || event.defaultPrevented) return;
         // Non-playable territories are never an answer.

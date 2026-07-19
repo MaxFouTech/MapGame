@@ -5,12 +5,7 @@
 const d3 = window.d3;
 const topojson = window.topojson;
 
-const PALETTE = [
-  '#eac86e', '#f0a35e', '#df6e56', '#3aa189', '#94b877',
-  '#b46684', '#8d90c9', '#a97bc0', '#c2a25b', '#7fb3ab',
-];
-const NON_PLAYABLE = '#d9d5cc';
-const OCEAN = '#cfe0ea';
+import { theme } from './themes.js';
 
 import { EXTRA_FEATURES } from './extras.js';
 
@@ -62,10 +57,12 @@ export function computeColors(features, neighbors, playable) {
   }
 
   // Welsh–Powell: color highest-degree first.
+  const th = theme();
+  const PALETTE = th.palette;
   const order = [...conflicts.keys()].sort((a, b) => conflicts.get(b).size - conflicts.get(a).size);
   const colors = new Map();
   for (const name of order) {
-    if (!playable.has(name)) { colors.set(name, NON_PLAYABLE); continue; }
+    if (!playable.has(name)) { colors.set(name, th.land); continue; }
     const used = new Set();
     for (const n of conflicts.get(name)) {
       const c = colors.get(n);
@@ -88,8 +85,6 @@ export function mainGeometry(f) {
   }
   return best;
 }
-
-export { OCEAN, NON_PLAYABLE };
 
 export class WorldMap {
   constructor(container, world, playableSet, callbacks) {
@@ -115,7 +110,7 @@ export class WorldMap {
     this.svg = d3.select(el).append('svg')
       .attr('viewBox', `0 0 ${this.width} ${this.height}`)
       .attr('width', '100%').attr('height', '100%')
-      .style('background', OCEAN);
+      .style('background', theme().ocean);
 
     this.projection = d3.geoNaturalEarth1();
     this._fitProjection();
@@ -139,7 +134,7 @@ export class WorldMap {
       .attr('class', f => 'country' + (this.playable.has(f.properties.name) ? '' : ' territory'))
       .attr('d', this.path)
       .attr('fill', f => this.colors.get(f.properties.name))
-      .attr('stroke', '#ffffff')
+      .attr('stroke', theme().stroke)
       .attr('stroke-width', 0.5)
       .on('click', (event, f) => this._onCountryClick(event, f));
 

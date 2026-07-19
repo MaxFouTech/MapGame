@@ -38,7 +38,14 @@ export function weight(rec, qIndex) {
   return urgency * (0.5 + 2.5 * errRate) * boxBoost;
 }
 
-export function pickTarget(player, candidates, recentAsked, forcedQueue) {
+// Smart review targeting. Priority order:
+//   1. a recently-missed country whose spaced-repetition retry is due;
+//   2. the player's past mistakes / weak countries (ever missed, or box <= 1);
+//   3. for someone with no mistakes yet (e.g. a new player), unseen countries
+//      following the level order — only the lowest level that still has unseen
+//      countries, so coverage advances sequentially instead of jumping around;
+//   4. once everything is seen and solid, the weakest seen countries.
+export function pickTarget(player, candidates, recentAsked, forcedQueue, levelOf) {
   const q = player.qIndex;
 
   // Forced reinforcement: a recently-missed country whose retry is due.
@@ -49,8 +56,29 @@ export function pickTarget(player, candidates, recentAsked, forcedQueue) {
   }
 
   const avoid = new Set(recentAsked.slice(-3));
-  let pool = candidates.filter(n => !avoid.has(n));
-  if (pool.length === 0) pool = candidates;
+  let base = candidates.filter(n => !avoid.has(n));
+  if (base.length === 0) base = candidates;
+
+  const seen = base.filter(n => player.records[n] && player.records[n].a > 0);
+  const mistakes = seen.filter(n => {
+    const r = player.records[n];
+    return r.c < r.a || r.box <= 1;              // ever missed, or weak / just-missed
+  });
+  const unseen = base.filter(n => !player.records[n] || player.records[n].a === 0);
+
+  // Unseen countries limited to the earliest level that still has some,
+  // so a fresh player is quizzed in level order.
+  let frontier = unseen;
+  if (unseen.length && levelOf) {
+    const minLvl = Math.min(...unseen.map(levelOf));
+    frontier = unseen.filter(n => levelOf(n) === minLvl);
+  }
+
+  // Prefer mistakes; keep some room for fresh coverage when both exist.
+  let pool;
+  if (mistakes.length && (frontier.length === 0 || Math.random() < 0.7)) pool = mistakes;
+  else if (frontier.length) pool = frontier;
+  else pool = seen.length ? seen : base;
 
   const weights = pool.map(n => weight(player.records[n], q));
   let total = weights.reduce((s, w) => s + w, 0);
