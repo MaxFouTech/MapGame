@@ -216,10 +216,16 @@ export class WorldMap {
       { type: 'FeatureCollection', features: this.features });
   }
 
-  // Ambient mode: static muted background behind the menus.
+  // Ambient mode: static muted background behind the menus. Entering it
+  // resets the view left over from the game (zoom, highlights).
   setAmbient(on) {
     this.ambient = on;
-    if (on) this.enabled = false;
+    if (on) {
+      this.enabled = false;
+      this.clearHighlights();
+      this.cancelAnimations();
+      this.zoomReset(600);
+    }
     this.refit();
   }
 

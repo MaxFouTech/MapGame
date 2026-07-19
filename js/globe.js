@@ -150,11 +150,18 @@ export class GlobeMap {
   }
 
   // Ambient mode: non-interactive slow spin used as the menu background.
+  // Entering it resets the view left over from the game: zoom back to 1,
+  // standard tilt, highlights cleared — then the slow spin resumes.
   setAmbient(on) {
     this.ambient = on;
     if (on) {
       this.enabled = false;
-      this._startSpin();
+      this.clearHighlights();
+      this.cancelAnimations();
+      const [l] = this.projection.rotate();
+      this._animateTo([-l, 18], 1, 700, () => {
+        if (this.ambient) this._startSpin();
+      });
     } else {
       this._stopSpin();
     }
