@@ -77,13 +77,6 @@ export function resetPlayerData(name) {
   save();
 }
 
-// Admin cleanup: forget every player on this device (language and map-mode
-// preferences are kept).
-export function wipeAllLocal() {
-  db = { players: {}, lastPlayer: null, levelsV2: true, lang: db.lang, mapMode: db.mapMode };
-  save();
-}
-
 export function deletePlayer(name) {
   delete db.players[name];
   if (db.lastPlayer === name) db.lastPlayer = null;

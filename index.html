@@ -65,6 +65,8 @@
     <button id="btn-admin" class="admin-link" data-i18n="adminBtn"></button>
     <div id="admin-panel" class="pin-panel hidden">
       <p data-i18n="adminHint"></p>
+      <div id="admin-list" class="admin-list"></div>
+      <label class="admin-all"><input type="checkbox" id="admin-all"><span data-i18n="adminSelectAll"></span></label>
       <div class="new-player">
         <input id="admin-pass" type="password" maxlength="64" data-i18n-placeholder="adminPlaceholder" autocomplete="off">
         <button id="btn-admin-run" class="btn danger" data-i18n="adminDo"></button>
@@ -96,7 +98,8 @@
     <div id="level-grid" class="level-grid"></div>
 
     <div class="menu-actions">
-      <button id="btn-review" class="btn primary" data-i18n="reviewBtn" data-icon="repeat"></button>
+      <button id="btn-play" class="btn primary big"></button>
+      <button id="btn-review" class="btn ghost" data-i18n="reviewBtn" data-icon="repeat"></button>
       <button id="btn-hub" class="btn ghost" data-i18n="hubBtn" data-icon="trophy"></button>
     </div>
     <div class="menu-footer">
@@ -200,6 +203,7 @@
     <div id="summary-stars" class="summary-stars hidden"></div>
     <div id="summary-body"></div>
     <div class="menu-actions summary-actions">
+      <button id="btn-next-level" class="btn primary big hidden"></button>
       <button id="btn-resume" class="btn primary big hidden"></button>
       <button id="btn-training" class="btn primary big hidden"></button>
       <button id="btn-again" class="btn primary"></button>

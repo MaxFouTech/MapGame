@@ -176,6 +176,30 @@ h3 { margin: 22px 0 6px; }
 }
 .admin-link:hover { color: var(--ink-soft); text-decoration: underline; }
 #admin-panel { margin-top: 8px; }
+.admin-list {
+  max-height: 170px;
+  overflow-y: auto;
+  margin: 8px 0 2px;
+  text-align: left;
+}
+.admin-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 2px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.admin-all {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #5a6b76;
+  cursor: pointer;
+}
+
 #admin-panel .new-player input { flex: 1 1 100%; max-width: none; }
 
 /* ===== leaderboard ===== */

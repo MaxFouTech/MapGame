@@ -333,8 +333,21 @@ const LEVEL_GROUPS = [
   { key: 'group_ultimate', levels: [9, 10] },
 ];
 
+// "Play" starts at the first level never completed (no star yet); once every
+// level has at least one star, at the first one not yet perfect; then level 1.
+function nextSequenceLevel() {
+  const lv = playerLevels();
+  const pending = LEVELS.find(l => !((lv[l.n] || {}).bestStars > 0));
+  if (pending) return pending.n;
+  const imperfect = LEVELS.find(l => (lv[l.n].bestStars || 0) < 3);
+  return imperfect ? imperfect.n : 1;
+}
+
 function renderMenu() {
   $('menu-player-name').textContent = state.playerName;
+  const seq = nextSequenceLevel();
+  $('btn-play').innerHTML = icon('play') + `<span>${t('playBtn', { n: seq })}</span>`;
+  $('btn-play').dataset.level = seq;
   const grid = $('level-grid');
   grid.innerHTML = '';
   const lv = playerLevels();
@@ -365,6 +378,7 @@ function renderMenu() {
 }
 
 $('btn-switch-player').addEventListener('click', () => { renderPlayers(); show('screen-players'); refreshCloudPlayers(); });
+$('btn-play').addEventListener('click', e => startSeries(Number(e.currentTarget.dataset.level) || 1));
 $('btn-review').addEventListener('click', startReview);
 
 // The hub groups leaderboard / country list / progress behind one menu
@@ -403,29 +417,67 @@ $('btn-reset-yes').addEventListener('click', async () => {
 });
 
 // ---------- admin cleanup ----------
-// Wipes ALL player accounts and scores (Supabase + this browser). The
-// password is sent as a passthrough to a Postgres function that checks its
-// hash server-side; it is never stored anywhere client-side.
+// Deletes the SELECTED player accounts and their scores (Supabase + this
+// browser). The password is sent as a passthrough to a Postgres function
+// that checks its hash server-side; it is never stored anywhere client-side.
 
-$('btn-admin').addEventListener('click', () => {
+function adminNames() {
+  const names = new Set(store.listPlayers());
+  for (const c of state.cloudPlayers) names.add(c.name);
+  return [...names].sort((a, b) => a.localeCompare(b));
+}
+
+function renderAdminList() {
+  const box = $('admin-list');
+  box.innerHTML = '';
+  const names = adminNames();
+  if (!names.length) {
+    box.innerHTML = `<p class="hint">${t('adminNoAccounts')}</p>`;
+  } else {
+    for (const n of names) {
+      const row = document.createElement('label');
+      row.className = 'admin-row';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.value = n;
+      row.appendChild(cb);
+      row.appendChild(document.createElement('span')).textContent = n;
+      box.appendChild(row);
+    }
+  }
+  $('admin-all').checked = false;
+}
+
+$('btn-admin').addEventListener('click', async () => {
   const panel = $('admin-panel');
   panel.classList.toggle('hidden');
   $('admin-msg').classList.add('hidden');
   $('admin-pass').value = '';
-  if (!panel.classList.contains('hidden')) $('admin-pass').focus();
+  if (panel.classList.contains('hidden')) return;
+  renderAdminList();
+  $('admin-pass').focus();
+  // Refresh so cloud-only accounts show up in the list too.
+  try { state.cloudPlayers = await cloud.listPlayers(); renderAdminList(); } catch (e) { /* offline */ }
+});
+$('admin-all').addEventListener('change', e => {
+  $('admin-list').querySelectorAll('input[type=checkbox]')
+    .forEach(cb => { cb.checked = e.target.checked; });
 });
 $('btn-admin-cancel').addEventListener('click', () => {
   $('admin-pass').value = '';
   $('admin-panel').classList.add('hidden');
 });
-async function runAdminWipe() {
+async function runAdminDelete() {
   const secret = $('admin-pass').value;
-  if (!secret) return;
+  if (!secret) { $('admin-pass').focus(); return; }
+  const names = [...$('admin-list').querySelectorAll('input[type=checkbox]:checked')]
+    .map(cb => cb.value);
   const msg = $('admin-msg');
   msg.classList.remove('hidden');
+  if (!names.length) { msg.textContent = t('adminNone'); return; }
   msg.textContent = '…';
   try {
-    const out = await cloud.adminWipe(secret);
+    const out = await cloud.adminDeletePlayers(secret, names);
     $('admin-pass').value = '';
     if (!out.ok) {
       if (out.missing) msg.textContent = t('adminMissing');
@@ -434,19 +486,19 @@ async function runAdminWipe() {
         (out.message ? ` — ${out.message}` : '');
       return;
     }
-    store.wipeAllLocal();
-    state.player = null;
-    state.playerName = null;
-    state.cloudPlayers = [];
-    msg.textContent = t('adminOk', { p: out.players, s: out.scores });
+    for (const n of names) store.deletePlayer(n);
+    if (names.includes(state.playerName)) { state.player = null; state.playerName = null; }
+    state.cloudPlayers = state.cloudPlayers.filter(c => !names.includes(c.name));
+    msg.textContent = t('adminOk', { p: names.length, s: out.scores });
+    renderAdminList();
     renderPlayers();
   } catch (e) {
     msg.textContent = t('adminOffline');
   }
 }
-$('btn-admin-run').addEventListener('click', runAdminWipe);
+$('btn-admin-run').addEventListener('click', runAdminDelete);
 $('admin-pass').addEventListener('keydown', e => {
-  if (e.key === 'Enter') { e.preventDefault(); runAdminWipe(); }
+  if (e.key === 'Enter') { e.preventDefault(); runAdminDelete(); }
 });
 
 // ---------- leaderboard screen ----------
@@ -1002,13 +1054,21 @@ function missBadges(s) {
   return s.asked > 0 ? `<p class="hint">${t('nothingToReview')}</p>` : '';
 }
 
-function openSummary(s, { title, stars = null, subtitle = '', resumable = false }) {
+function openSummary(s, { title, stars = null, subtitle = '', resumable = false, nextLevel = null }) {
   const resBtn = $('btn-resume');
   if (resumable) {
     resBtn.classList.remove('hidden');
     resBtn.innerHTML = icon('play') + `<span>${t('resumeBtn')}</span>`;
   } else {
     resBtn.classList.add('hidden');
+  }
+  const nextBtn = $('btn-next-level');
+  if (nextLevel) {
+    nextBtn.classList.remove('hidden');
+    nextBtn.innerHTML = icon('play') + `<span>${t('nextLevelBtn', { n: nextLevel })}</span>`;
+    nextBtn.dataset.level = nextLevel;
+  } else {
+    nextBtn.classList.add('hidden');
   }
   $('summary-title').textContent = title;
   const starsEl = $('summary-stars');
@@ -1066,6 +1126,7 @@ function endSeries() {
     title: s.stars === 3 ? t('perfectTitle') : t('seriesDone'),
     stars: s.stars,
     subtitle: `<p class="summary-level">${t('levelLabel', { n: s.levelN })} · ${escapeHtml(levelTitle(lvl))}</p>`,
+    nextLevel: LEVELS.some(l => l.n === s.levelN + 1) ? s.levelN + 1 : null,
   });
 }
 
@@ -1126,6 +1187,10 @@ $('btn-again').addEventListener('click', e => {
   const mode = e.currentTarget.dataset.mode;
   if (mode === 'review') startReview();
   else startSeries(Number(e.currentTarget.dataset.level) || state.lastSeries?.levelN || 1);
+});
+$('btn-next-level').addEventListener('click', e => {
+  flushPausedSession();
+  startSeries(Number(e.currentTarget.dataset.level));
 });
 $('btn-summary-menu').addEventListener('click', () => {
   flushPausedSession();

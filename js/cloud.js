@@ -121,10 +121,10 @@ export async function fetchLeaderboard() {
 // Admin: wipe every account and score. The password travels as a request
 // parameter only; the Postgres function (see supabase/setup.sql) compares
 // its SHA-256 hash server-side and returns {ok:false} on mismatch.
-export async function adminWipe(secret) {
-  const r = await req('/rpc/admin_wipe_players', {
+export async function adminDeletePlayers(secret, names) {
+  const r = await req('/rpc/admin_delete_players', {
     method: 'POST',
-    body: JSON.stringify({ secret }),
+    body: JSON.stringify({ secret, names }),
   }, 10000);
   // 404 = the function has not been created in Supabase yet — surface it
   // as its own case, distinct from "network down".

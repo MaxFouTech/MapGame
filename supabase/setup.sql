@@ -42,15 +42,20 @@ create policy "leaderboard update" on public.leaderboard for update using (true)
 create policy "leaderboard delete" on public.leaderboard for delete using (true);
 
 -- ===== Admin cleanup (password-protected RPC) =====
--- Wipes every player account and leaderboard row from the website's hidden
--- admin panel. The password is checked INSIDE the function: only its
--- SHA-256 hash lives in the database, and the plaintext password is
--- deliberately NOT in this repository. Before running, replace the
--- placeholder below with the hex sha256 of your admin password:
+-- Deletes the player accounts listed in `names` from the website's hidden
+-- admin panel (select-all in the UI wipes everything). The password is
+-- checked INSIDE the function: only its SHA-256 hash lives in the database,
+-- and the plaintext password is deliberately NOT in this repository.
+-- Before running, replace the placeholder below with the hex sha256 of
+-- your admin password:
 --   printf '%s' 'your-password' | openssl dgst -sha256
+-- Note: the deletes are filtered on purpose — Supabase's safeupdate guard
+-- rejects unfiltered DELETEs ("DELETE requires a WHERE clause").
 create extension if not exists pgcrypto with schema extensions;
 
-create or replace function public.admin_wipe_players(secret text)
+drop function if exists public.admin_wipe_players(text);
+
+create or replace function public.admin_delete_players(secret text, names text[])
 returns json
 language plpgsql
 security definer
@@ -64,13 +69,13 @@ begin
      <> 'REPLACE_WITH_SHA256_HEX_OF_ADMIN_PASSWORD' then
     return json_build_object('ok', false, 'error', 'unauthorized');
   end if;
-  delete from public.leaderboard;
+  delete from public.leaderboard where player_name = any(names);
   get diagnostics n_scores = row_count;
-  delete from public.players;
+  delete from public.players where name = any(names);
   get diagnostics n_players = row_count;
   return json_build_object('ok', true, 'players', n_players, 'scores', n_scores);
 end;
 $$;
 
-revoke all on function public.admin_wipe_players(text) from public;
-grant execute on function public.admin_wipe_players(text) to anon, authenticated;
+revoke all on function public.admin_delete_players(text, text[]) from public;
+grant execute on function public.admin_delete_players(text, text[]) to anon, authenticated;
