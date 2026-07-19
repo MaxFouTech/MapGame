@@ -571,11 +571,13 @@ async function ensureMap() {
     onValidate: onValidate,
     labelFor: n => displayName(n),
     distLabel: km => `${km.toLocaleString(getLang() === 'fr' ? 'fr-FR' : 'en-US')} km`,
-    // Keep the play area below the fixed hud card.
+    // Keep the play area below the hud card — also in ambient mode, so the
+    // globe does not jump when a game starts. Remember the last measured
+    // hud height (it is display:none outside the game).
     topInset: () => {
-      if (state.currentScreen !== 'screen-game') return 0;
       const el = $('main-card');
-      return el ? el.offsetHeight + 26 : 0;
+      if (el && el.offsetHeight > 0) state.hudH = el.offsetHeight;
+      return (state.hudH || 68) + 26;
     },
   });
   state.mapBuiltMode = mode;

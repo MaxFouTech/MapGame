@@ -134,6 +134,9 @@ h3 { margin: 22px 0 6px; }
 }
 .new-player input:focus { border-color: var(--accent); }
 .new-player .btn { flex: 1 0 auto; }
+/* Create form: name and PIN each on their own line. */
+#new-player-name { flex: 1 1 100%; }
+#new-player-pin { flex: 1 1 100%; max-width: none; }
 
 /* ===== pin panel / player screen extras ===== */
 .pin-panel {

@@ -236,11 +236,14 @@ export class WorldMap {
   }
 
   // A click on a country is always an answer — the player manages zoom and
-  // pan themselves (wheel / drag).
+  // pan themselves (wheel / drag). Tiny countries only become answerable
+  // once zoomed in enough for their ring markers (prevents impossible
+  // misclicks at world view).
   _onCountryClick(event, f) {
     if (!this.enabled) return;
     if (event.defaultPrevented) return; // was a drag
     event.stopPropagation();
+    if (this.tiny.has(f.properties.name) && this.k < 2.2) return;
     this.cb.onValidate(f);
   }
 

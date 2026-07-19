@@ -60,6 +60,8 @@ export class GlobeMap {
       .on('click', (event, f) => {
         if (!this.enabled || event.defaultPrevented) return;
         event.stopPropagation();
+        // Tiny countries answerable only at ring-marker zoom level.
+        if (this.tiny.has(f.properties.name) && this.k < 1.6) return;
         this.cb.onValidate(f);
       });
 
@@ -69,6 +71,8 @@ export class GlobeMap {
     const validate = (event, f) => {
       if (!this.enabled || event.defaultPrevented) return;
       event.stopPropagation();
+      // Tiny countries answerable only at ring-marker zoom level.
+      if (this.tiny.has(f.properties.name) && this.k < 1.6) return;
       this.cb.onValidate(f);
     };
     this.hitPaths = this.svg.append('g').selectAll('path.hit')
