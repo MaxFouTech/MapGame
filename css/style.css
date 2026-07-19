@@ -44,10 +44,14 @@ body.summary-open .feedback, body.summary-open .points-popup { display: none !im
   padding: 36px 42px;
   width: min(480px, 92vw);
   text-align: center;
-  /* Panels must scroll internally on small screens (body never scrolls). */
+  /* Panels must scroll internally on small screens (body never scrolls).
+     vh fallback first: browsers without dvh support would otherwise drop
+     the rule entirely and the panel could not scroll at all. */
+  max-height: calc(100vh - 20px);
   max-height: calc(100dvh - 20px);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 .panel.wide { width: min(680px, 94vw); text-align: left; }
 
@@ -279,6 +283,7 @@ h3 { margin: 22px 0 6px; }
   box-shadow: 0 10px 34px rgba(20, 40, 60, .25);
   display: flex; align-items: center; gap: 16px; z-index: 20;
   max-width: min(640px, 92vw);
+  cursor: pointer;
 }
 .feedback .consolation { color: var(--good); font-weight: 600; }
 .feedback .fail-streak { color: var(--bad); font-weight: 700; font-size: .85rem; margin-top: 4px; }
@@ -299,7 +304,30 @@ h3 { margin: 22px 0 6px; }
 
 @media (max-width: 640px) {
   .prompt-country { font-size: 1.15rem; }
-  .panel { padding: 24px; }
+}
+
+/* Compact panels and level cards on small screens (portrait or landscape)
+   so the whole list is shorter and scrolling is rarely needed at all. */
+@media (max-width: 640px), (max-height: 640px) {
+  .panel { padding: 16px 14px; border-radius: 14px; }
+  .panel.wide h2 { font-size: 1.15rem; }
+  .logo.small { font-size: 1.15rem; }
+  .level-grid { gap: 6px; margin: 10px 0 4px; }
+  .level-card { padding: 7px 10px; gap: 8px; border-radius: 10px; }
+  .level-num { width: 26px; height: 26px; font-size: .9rem; border-radius: 8px; }
+  .level-body { gap: 1px; }
+  .level-title { font-size: .88rem; }
+  .level-meta, .level-scores { font-size: .7rem; }
+  .stars { font-size: .8rem; }
+  .menu-actions { margin-top: 12px; gap: 8px; }
+  .menu-actions .btn { font-size: .85rem; padding: 8px 12px; }
+  .stat-tile { padding: 8px; }
+  .stat-tile b { font-size: 1.05rem; }
+  /* Compact miss popup: no Next button, tap the popup (or the map) to
+     move on to the next country. */
+  .feedback { padding: 8px 12px; font-size: .78rem; gap: 8px; border-radius: 10px; max-width: 94vw; }
+  .feedback .fail-streak { font-size: .72rem; margin-top: 2px; }
+  .feedback #btn-next { display: none; }
 }
 
 /* Landscape phones: shrink the hud so the map keeps the space. */

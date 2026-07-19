@@ -614,6 +614,11 @@ $('btn-world').addEventListener('click', () => state.map?.zoomReset());
 $('btn-dontknow').addEventListener('click', giveUp);
 $('btn-end').addEventListener('click', endSessionEarly);
 $('btn-next').addEventListener('click', nextQuestion);
+// Tapping the feedback popup itself also advances (the mobile flow, where
+// the Next button is hidden). Guarded so the button click doesn't double-fire.
+$('feedback').addEventListener('click', () => {
+  if (state.phase === 'feedback' && state.session) nextQuestion();
+});
 $('btn-training').addEventListener('click', () => {
   if (state.lastSeries?.missed.length) startTraining(state.lastSeries.levelN, state.lastSeries.missed);
 });
