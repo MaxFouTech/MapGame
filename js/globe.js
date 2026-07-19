@@ -59,6 +59,8 @@ export class GlobeMap {
       .attr('stroke', '#ffffff')
       .on('click', (event, f) => {
         if (!this.enabled || event.defaultPrevented) return;
+        // Non-playable territories are never an answer.
+        if (!this.playable.has(f.properties.name)) return;
         event.stopPropagation();
         // Tiny countries answerable only at ring-marker zoom level.
         if (this.tiny.has(f.properties.name) && this.k < 1.6) return;

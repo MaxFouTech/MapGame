@@ -242,6 +242,9 @@ export class WorldMap {
   _onCountryClick(event, f) {
     if (!this.enabled) return;
     if (event.defaultPrevented) return; // was a drag
+    // Non-playable territories are never an answer — let the click fall
+    // through as if it hit the ocean.
+    if (!this.playable.has(f.properties.name)) return;
     event.stopPropagation();
     if (this.tiny.has(f.properties.name) && this.k < 2.2) return;
     this.cb.onValidate(f);
