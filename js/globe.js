@@ -133,14 +133,29 @@ export class GlobeMap {
       });
     this.svg.call(this.zoom).on('dblclick.zoom', null);
 
-    // Refit on window resize.
+    // Refit on window resize. Keep the handler reference so destroy() can
+    // remove it — otherwise every rebuild (e.g. a theme switch) leaks a
+    // listener bound to a dead instance.
     this._resizeTimer = null;
-    window.addEventListener('resize', () => {
+    this._onResize = () => {
       clearTimeout(this._resizeTimer);
       this._resizeTimer = setTimeout(() => this.refit(), 150);
-    });
+    };
+    window.addEventListener('resize', this._onResize);
 
     this._render();
+  }
+
+  // Tear down before the instance is discarded: stop the ambient spin loop
+  // and any pending render/transition, and drop the resize listener. Without
+  // this, a rebuilt globe leaves its requestAnimationFrame spin running, so
+  // repeated rebuilds pile up concurrent loops and the page slows down.
+  destroy() {
+    this.ambient = false;
+    this._stopSpin();
+    if (this._raf) { cancelAnimationFrame(this._raf); this._raf = null; }
+    this.cancelAnimations();
+    window.removeEventListener('resize', this._onResize);
   }
 
   // Fit the globe in the space below the hud (topInset) and above the hint.

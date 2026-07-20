@@ -690,6 +690,9 @@ async function ensureMap(force = false) {
   if (!state.world) {
     state.world = await loadWorld();
   }
+  // Tear down the previous instance first — otherwise its ambient spin loop
+  // and resize listener leak, and repeated rebuilds (theme switches) pile up.
+  state.map?.destroy?.();
   $('map').innerHTML = '';
   const MapCls = mode === 'globe' ? GlobeMap : WorldMap;
   state.map = new MapCls($('map'), state.world, new Set(PLAYABLE), {

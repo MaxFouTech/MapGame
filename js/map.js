@@ -145,11 +145,13 @@ export class WorldMap {
     this.path = d3.geoPath(this.projection);
 
     // Refit on window resize so the world always fills the available space.
+    // Keep the handler reference so destroy() can remove it on rebuild.
     this._resizeTimer = null;
-    window.addEventListener('resize', () => {
+    this._onResize = () => {
       clearTimeout(this._resizeTimer);
       this._resizeTimer = setTimeout(() => this.refit(), 150);
-    });
+    };
+    window.addEventListener('resize', this._onResize);
 
     this.g = this.svg.append('g');
     this.overlay = this.g.append('g').attr('class', 'overlay-layer');
@@ -358,6 +360,15 @@ export class WorldMap {
 
   cancelAnimations() {
     this.svg.interrupt();
+  }
+
+  // Tear down before the instance is discarded (rebuild / theme switch):
+  // stop transitions and drop the resize listener so dead instances don't
+  // linger.
+  destroy() {
+    this.ambient = false;
+    this.cancelAnimations();
+    window.removeEventListener('resize', this._onResize);
   }
 
   _drawArrow(guessName, targetName) {
