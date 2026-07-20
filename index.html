@@ -86,27 +86,7 @@
         <div class="lang-switch" id="lang-switch-menu">
           <button data-lang="fr">FR</button><button data-lang="en">EN</button>
         </div>
-        <div class="display-wrap">
-          <button id="btn-display" class="btn ghost" data-i18n="displayBtn" data-icon="palette"></button>
-          <div id="display-panel" class="pop-panel hidden">
-            <div class="pop-head">
-              <p class="pop-title" data-i18n="displayBtn"></p>
-              <button id="btn-display-close" class="pop-close" aria-label="close">&times;</button>
-            </div>
-            <p class="pop-label" data-i18n="themeTitle"></p>
-            <div id="theme-grid" class="theme-grid"></div>
-            <p class="pop-label" data-i18n="mapTitle"></p>
-            <div class="lang-switch map-switch" id="map-switch">
-              <button data-mode="2d">2D</button><button data-mode="globe">3D</button>
-            </div>
-            <p class="pop-label" data-i18n="challengeTitle"></p>
-            <label class="toggle-row">
-              <input type="checkbox" id="challenge-toggle">
-              <span data-i18n="challengeLabel"></span>
-            </label>
-            <p class="hint" data-i18n="challengeHint"></p>
-          </div>
-        </div>
+        <button id="btn-display" class="btn ghost" data-i18n="displayBtn" data-icon="palette"></button>
         <button id="btn-switch-player" class="btn ghost"><span class="switch-ico"></span><span id="menu-player-name"></span></button>
       </div>
     </div>
@@ -129,6 +109,28 @@
     <div class="menu-footer">
       <span id="online-badge" class="online-badge"></span>
     </div>
+  </div>
+</div>
+
+<!-- ===== Display settings ===== -->
+<div id="screen-display" class="screen">
+  <div class="panel wide scroll">
+    <div class="menu-head">
+      <h2 data-i18n="displayBtn"></h2>
+      <button id="btn-display-back" class="btn ghost" data-i18n="back"></button>
+    </div>
+    <p class="pop-label" data-i18n="themeTitle"></p>
+    <div id="theme-grid" class="theme-grid"></div>
+    <p class="pop-label" data-i18n="mapTitle"></p>
+    <div class="lang-switch map-switch" id="map-switch">
+      <button data-mode="2d">2D</button><button data-mode="globe">3D</button>
+    </div>
+    <p class="pop-label" data-i18n="challengeTitle"></p>
+    <label class="toggle-row">
+      <input type="checkbox" id="challenge-toggle">
+      <span data-i18n="challengeLabel"></span>
+    </label>
+    <p class="hint" data-i18n="challengeHint"></p>
   </div>
 </div>
 

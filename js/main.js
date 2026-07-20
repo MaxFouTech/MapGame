@@ -761,15 +761,12 @@ async function applyTheme(key) {
 }
 
 $('btn-display').addEventListener('click', () => {
-  const panel = $('display-panel');
-  panel.classList.toggle('hidden');
-  if (!panel.classList.contains('hidden')) {
-    renderThemeGrid();
-    // Challenge = names hidden, so the checkbox is the inverse of showNames.
-    $('challenge-toggle').checked = !store.getShowNames();
-  }
+  renderThemeGrid();
+  // Challenge = names hidden, so the checkbox is the inverse of showNames.
+  $('challenge-toggle').checked = !store.getShowNames();
+  show('screen-display');
 });
-$('btn-display-close').addEventListener('click', () => $('display-panel').classList.add('hidden'));
+$('btn-display-back').addEventListener('click', () => { renderMenu(); show('screen-menu'); });
 $('theme-grid').addEventListener('click', e => {
   const btn = e.target.closest('.theme-swatch');
   if (btn) applyTheme(btn.dataset.theme);
@@ -779,14 +776,6 @@ $('challenge-toggle').addEventListener('change', e => {
   updateChallengeBadge();
   // Apply immediately if a question is on screen.
   if (state.session && state.target && state.phase === 'asking') renderPrompt(state.target);
-});
-// Close the popover when clicking outside it.
-document.addEventListener('click', e => {
-  const panel = $('display-panel');
-  if (panel.classList.contains('hidden')) return;
-  if (!panel.contains(e.target) && e.target.closest('#btn-display') == null) {
-    panel.classList.add('hidden');
-  }
 });
 
 function updateChallengeBadge() {
@@ -1068,6 +1057,9 @@ function updateHud() {
     flags.push(`<span class="flag-streak">${icon('flame')}<span>${t('streakRow', { n: s.streak })}</span></span>`);
   }
   $('hud-flags').innerHTML = flags.join('');
+  // Collapse the row entirely when there is no chip, so it never reserves
+  // empty vertical space (noticeable on mobile).
+  $('hud-flags').classList.toggle('hidden', flags.length === 0);
 }
 
 // ---------- session endings ----------
