@@ -351,6 +351,7 @@ function renderMenu() {
   $('btn-play').innerHTML = icon('play') + `<span>${t('playBtn')}</span>`;
   $('btn-play').dataset.level = seq;
   $('play-sub').textContent = t('playSub', { n: seq });
+  updateChallengeBadge();
   const grid = $('level-grid');
   grid.innerHTML = '';
   const lv = playerLevels();
@@ -764,15 +765,18 @@ $('btn-display').addEventListener('click', () => {
   panel.classList.toggle('hidden');
   if (!panel.classList.contains('hidden')) {
     renderThemeGrid();
-    $('show-names-toggle').checked = store.getShowNames();
+    // Challenge = names hidden, so the checkbox is the inverse of showNames.
+    $('challenge-toggle').checked = !store.getShowNames();
   }
 });
+$('btn-display-close').addEventListener('click', () => $('display-panel').classList.add('hidden'));
 $('theme-grid').addEventListener('click', e => {
   const btn = e.target.closest('.theme-swatch');
   if (btn) applyTheme(btn.dataset.theme);
 });
-$('show-names-toggle').addEventListener('change', e => {
-  store.setShowNames(e.target.checked);
+$('challenge-toggle').addEventListener('change', e => {
+  store.setShowNames(!e.target.checked); // checked = challenge on = hide names
+  updateChallengeBadge();
   // Apply immediately if a question is on screen.
   if (state.session && state.target && state.phase === 'asking') renderPrompt(state.target);
 });
@@ -784,6 +788,13 @@ document.addEventListener('click', e => {
     panel.classList.add('hidden');
   }
 });
+
+function updateChallengeBadge() {
+  const badge = $('challenge-badge');
+  const on = !store.getShowNames();
+  badge.classList.toggle('hidden', !on);
+  if (on) badge.innerHTML = icon('flag') + `<span>${t('challengeBadge')}</span>`;
+}
 
 
 function newSession(mode, extra = {}) {

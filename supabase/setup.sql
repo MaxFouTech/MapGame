@@ -79,3 +79,22 @@ $$;
 
 revoke all on function public.admin_delete_players(text, text[]) from public;
 grant execute on function public.admin_delete_players(text, text[]) to anon, authenticated;
+
+-- ===== Account cap (abuse guard) =====
+-- Caps the total number of player accounts. Well above any realistic use
+-- (a few dozen players), it only ever trips on scripted abuse: extra INSERTs
+-- are refused cleanly instead of letting the table grow without bound. Change
+-- the limit by re-running this block with a different max_players.
+create or replace function public.enforce_player_cap()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare max_players int := 500;   -- adjust the limit here
+begin
+  if (select count(*) from public.players) >= max_players then
+    raise exception 'player cap reached' using errcode = 'check_violation';
+  end if;
+  return new;
+end; $$;
+
+drop trigger if exists trg_player_cap on public.players;
+create trigger trg_player_cap before insert on public.players
+  for each row execute function public.enforce_player_cap();

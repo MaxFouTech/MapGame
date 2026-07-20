@@ -250,17 +250,24 @@ h3 { margin: 22px 0 6px; }
 .menu-actions .btn.full { width: 100%; }
 .review-sub { margin: -2px 0 6px; padding-left: 2px; }
 
-/* Display popover: theme swatches + name toggle. */
+/* Display popover: theme swatches + map mode + challenge toggle. */
 .display-wrap { position: relative; }
 .pop-panel {
-  position: absolute; right: 0; top: calc(100% + 8px); z-index: 30;
-  width: 300px; max-width: 86vw; padding: 14px;
-  background: rgba(255, 255, 255, .92); backdrop-filter: blur(14px);
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 60;
+  width: 320px; max-width: 86vw; max-height: 78vh; overflow-y: auto; padding: 14px;
+  background: rgba(255, 255, 255, .94); backdrop-filter: blur(14px);
   border: 1px solid #e2e9ee; border-radius: 14px;
   box-shadow: 0 12px 34px rgba(20, 40, 60, .18); text-align: left;
 }
-.pop-title { font-weight: 700; margin-bottom: 8px; font-size: .95rem; }
-.theme-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
+.pop-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.pop-title { font-weight: 700; font-size: 1rem; }
+.pop-label { font-weight: 700; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--ink-soft); margin: 12px 0 6px; }
+.pop-label:first-of-type { margin-top: 4px; }
+.pop-close { border: none; background: none; font-size: 1.5rem; line-height: 1; color: var(--ink-soft);
+  cursor: pointer; padding: 0 4px; }
+.pop-panel .map-switch { display: inline-flex; }
+.theme-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 4px; }
 .theme-swatch {
   display: flex; flex-direction: column; gap: 5px; align-items: stretch;
   padding: 7px; border: 2px solid #e2e9ee; border-radius: 10px;
@@ -273,6 +280,16 @@ h3 { margin: 22px 0 6px; }
 .theme-swatch .sw-strip span { flex: 1; }
 .toggle-row { display: flex; align-items: center; gap: 9px; font-size: .92rem; font-weight: 600; cursor: pointer; }
 .toggle-row input { width: 17px; height: 17px; }
+
+/* Challenge (flag-only) indicator on the main menu. */
+.challenge-badge {
+  display: inline-flex; align-items: center; gap: 6px; margin: 6px auto 0;
+  padding: 4px 11px; border-radius: 999px; font-size: .8rem; font-weight: 700;
+  color: #a15b12; background: rgba(240, 163, 94, .18); border: 1px solid rgba(224, 123, 57, .4);
+}
+.challenge-badge .ico { width: 1em; height: 1em; }
+.start-block { display: flex; flex-direction: column; align-items: center; }
+.start-block .btn.big, .start-block #play-sub { width: 100%; }
 
 /* Flag chips (flagcdn image with a grey fallback base). */
 .flag {
@@ -552,6 +569,17 @@ h3 { margin: 22px 0 6px; }
   /* Menu header: one row per element on small screens. */
   .menu-head { flex-direction: column; align-items: stretch; gap: 8px; }
   .menu-head-right { flex-wrap: wrap; row-gap: 6px; }
+  /* Display popover becomes a centered sheet so the full 10-theme grid fits
+     on screen instead of overflowing off the edge. */
+  .display-wrap { position: static; }
+  .pop-panel {
+    position: fixed; left: 50%; right: auto; top: 50%; transform: translate(-50%, -50%);
+    width: min(360px, 92vw); max-height: 86vh;
+  }
+  .pop-panel::before {
+    content: ''; position: fixed; inset: 0; z-index: -1;
+    background: rgba(15, 25, 35, .35); pointer-events: none;
+  }
 }
 
 /* Compact panels and level cards on small screens (portrait or landscape)

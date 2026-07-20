@@ -83,22 +83,28 @@
     <div class="menu-head">
       <h1 class="logo small"><span class="logo-ico"></span>MapGame</h1>
       <div class="menu-head-right">
-        <div class="lang-switch map-switch" id="map-switch">
-          <button data-mode="2d">2D</button><button data-mode="globe">3D</button>
-        </div>
         <div class="lang-switch" id="lang-switch-menu">
           <button data-lang="fr">FR</button><button data-lang="en">EN</button>
         </div>
         <div class="display-wrap">
           <button id="btn-display" class="btn ghost" data-i18n="displayBtn" data-icon="palette"></button>
           <div id="display-panel" class="pop-panel hidden">
-            <p class="pop-title" data-i18n="themeTitle"></p>
+            <div class="pop-head">
+              <p class="pop-title" data-i18n="displayBtn"></p>
+              <button id="btn-display-close" class="pop-close" aria-label="close">&times;</button>
+            </div>
+            <p class="pop-label" data-i18n="themeTitle"></p>
             <div id="theme-grid" class="theme-grid"></div>
+            <p class="pop-label" data-i18n="mapTitle"></p>
+            <div class="lang-switch map-switch" id="map-switch">
+              <button data-mode="2d">2D</button><button data-mode="globe">3D</button>
+            </div>
+            <p class="pop-label" data-i18n="challengeTitle"></p>
             <label class="toggle-row">
-              <input type="checkbox" id="show-names-toggle">
-              <span data-i18n="showNamesLabel"></span>
+              <input type="checkbox" id="challenge-toggle">
+              <span data-i18n="challengeLabel"></span>
             </label>
-            <p class="hint" data-i18n="showNamesHint"></p>
+            <p class="hint" data-i18n="challengeHint"></p>
           </div>
         </div>
         <button id="btn-switch-player" class="btn ghost"><span class="switch-ico"></span><span id="menu-player-name"></span></button>
@@ -108,6 +114,7 @@
     <div class="start-block">
       <button id="btn-play" class="btn primary big"></button>
       <p id="play-sub" class="hint"></p>
+      <span id="challenge-badge" class="challenge-badge hidden"></span>
     </div>
 
     <h2 class="secondary-title" data-i18n="chooseLevels"></h2>
