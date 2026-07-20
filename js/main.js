@@ -892,6 +892,12 @@ function renderPrompt(name) {
   el.innerHTML = showNames
     ? flagHtml(name) + `<span class="prompt-name">${escapeHtml(displayName(name))}</span>`
     : flagHtml(name, 'flag-xl');
+  // Restart the attention pop so it plays on every new question.
+  if (!REDUCED_MOTION) {
+    el.classList.remove('pop-in');
+    void el.offsetWidth;
+    el.classList.add('pop-in');
+  }
 }
 
 function nextQuestion() {

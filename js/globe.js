@@ -2,7 +2,7 @@
 // interface as WorldMap: drag to spin, wheel/pinch to zoom, click to
 // answer, great-circle correction arrow on mistakes.
 
-import { buildGeoData, computeColors, mainGeometry } from './map.js';
+import { buildGeoData, computeColors, mainGeometry, appendFlagLabel } from './map.js';
 import { theme } from './themes.js';
 
 const d3 = window.d3;
@@ -308,10 +308,7 @@ export class GlobeMap {
       const g = ov.append('g')
         .attr('class', `map-label ${lab.kind}`)
         .attr('transform', `translate(${p[0]},${p[1]})`);
-      g.append('text').attr('class', 'map-label-halo')
-        .attr('font-size', '15px').attr('stroke-width', 4).text(text);
-      g.append('text').attr('class', 'map-label-text')
-        .attr('font-size', '15px').text(text);
+      appendFlagLabel(g, text, lab.name, 15);
     }
   }
 

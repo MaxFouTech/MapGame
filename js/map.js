@@ -6,6 +6,34 @@ const d3 = window.d3;
 const topojson = window.topojson;
 
 import { theme } from './themes.js';
+import { NAME_TO_ISO2 } from './flags.js';
+
+// Draw a correction label (flag + country name) centred at the current
+// origin of `g`. Used by both the 2D map and the globe so the on-map labels
+// match the flags shown elsewhere. Returns nothing; a missing flag simply
+// leaves the name on its own.
+export function appendFlagLabel(g, text, name, fontSize = 15) {
+  const inner = g.append('g').attr('class', 'ml-inner');
+  const iso = NAME_TO_ISO2[name];
+  const fw = fontSize * 1.4, fh = fontSize, gap = fontSize * 0.32;
+  const tx = iso ? fw + gap : 0;
+  const halo = inner.append('text').attr('class', 'map-label-halo')
+    .attr('font-size', `${fontSize}px`).attr('stroke-width', 4)
+    .attr('text-anchor', 'start').attr('x', tx).text(text);
+  const txt = inner.append('text').attr('class', 'map-label-text')
+    .attr('font-size', `${fontSize}px`)
+    .attr('text-anchor', 'start').attr('x', tx).text(text);
+  let w;
+  try { w = txt.node().getComputedTextLength(); } catch (e) { w = text.length * fontSize * 0.55; }
+  if (iso) {
+    const url = `https://flagcdn.com/w40/${iso}.png`;
+    inner.insert('image', ':first-child').attr('class', 'ml-flag')
+      .attr('href', url).attr('xlink:href', url) // xlink for older browsers
+      .attr('x', 0).attr('y', -fh / 2).attr('width', fw).attr('height', fh)
+      .attr('preserveAspectRatio', 'xMidYMid slice');
+  }
+  inner.attr('transform', `translate(${-(tx + w) / 2}, 0)`);
+}
 
 import { EXTRA_FEATURES } from './extras.js';
 
@@ -380,8 +408,10 @@ export class WorldMap {
     const g = this.overlay.append('g')
       .attr('class', `map-label ${kind}`)
       .attr('transform', `translate(${c[0]},${c[1]})`);
-    g.append('text').attr('class', 'map-label-halo').text(text);
-    g.append('text').attr('class', 'map-label-text').text(text);
+    // Inner group carries the zoom scale so the flag and text stay locked
+    // together (see _scaleOverlay).
+    const scale = g.append('g').attr('class', 'ml-scale');
+    appendFlagLabel(scale, text, name, 15);
     this._scaleOverlay();
   }
 
@@ -396,11 +426,14 @@ export class WorldMap {
         const base = d3.select(this).attr('transform').replace(/ scale\([^)]*\)/, '');
         return `${base} scale(${2.1 / k})`;
       });
-    this.overlay.selectAll('.map-label text')
-      .attr('font-size', `${15 / k}px`)
-      .attr('stroke-width', 4 / k);
+    // Country labels (flag + name) scale as a whole group, keeping the flag
+    // and text proportioned together.
+    this.overlay.selectAll('.map-label:not(.dist) .ml-scale')
+      .attr('transform', `scale(${1 / k})`);
+    // The distance label is text only.
     this.overlay.selectAll('.map-label.dist text')
       .attr('font-size', `${13 / k}px`)
+      .attr('stroke-width', 4 / k)
       .attr('dy', -9 / k);
   }
 }

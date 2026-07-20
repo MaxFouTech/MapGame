@@ -462,9 +462,10 @@ h3 { margin: 22px 0 6px; }
 .arrow-line { fill: none; stroke: #d8544a; stroke-linecap: round; }
 .arrow-head { fill: #d8544a; }
 .map-label text { text-anchor: middle; font-weight: 700; dominant-baseline: middle; }
-.map-label-halo { stroke: #fff; stroke-linejoin: round; fill: #fff; }
+.map-label-halo { stroke: #fff; stroke-linejoin: round; fill: #fff; paint-order: stroke; }
 .map-label.guess .map-label-text { fill: var(--bad); }
 .map-label.target .map-label-text { fill: #1b7a4e; }
+.ml-flag { filter: drop-shadow(0 0 1px rgba(255, 255, 255, .95)); }
 
 /* The hud containers span the map but must not swallow clicks in the empty
    space between their cards/buttons. */
@@ -485,7 +486,16 @@ h3 { margin: 22px 0 6px; }
   box-shadow: 0 6px 24px rgba(20, 40, 60, .18);
 }
 .prompt-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); }
-.prompt-country { font-size: 1.35rem; font-weight: 800; line-height: 1.12; }
+.prompt-country { font-size: 1.35rem; font-weight: 800; line-height: 1.12; transform-origin: left center; }
+.prompt-country.flag-only { transform-origin: center; }
+/* A quick pop when a new country appears, to pull the eye to the prompt.
+   Coherent with the pop used for the ✓/streak feedback. */
+@keyframes promptPop {
+  0% { transform: scale(.7); opacity: .2; }
+  55% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.prompt-country.pop-in { animation: promptPop .4s cubic-bezier(.2, .75, .3, 1.15); }
 /* Desktop: one horizontal card centered at the top. */
 .main-card { display: flex; align-items: center; gap: 18px; max-width: min(680px, 94vw); }
 .main-card-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
