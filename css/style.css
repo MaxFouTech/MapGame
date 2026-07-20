@@ -462,6 +462,10 @@ h3 { margin: 22px 0 6px; }
 .arrow-line { fill: none; stroke: #d8544a; stroke-linecap: round; }
 .arrow-head { fill: #d8544a; }
 .map-label text { text-anchor: middle; font-weight: 700; dominant-baseline: middle; }
+/* Flag-labelled correction labels lay out left-to-right (flag then name), so
+   the name must anchor at its start — a plain attribute loses to the CSS rule
+   above, hence this more specific selector. */
+.map-label .ml-inner text { text-anchor: start; }
 .map-label-halo { stroke: #fff; stroke-linejoin: round; fill: #fff; paint-order: stroke; }
 .map-label.guess .map-label-text { fill: var(--bad); }
 .map-label.target .map-label-text { fill: #1b7a4e; }
