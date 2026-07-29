@@ -18,6 +18,12 @@ function load() {
     for (const p of Object.values(d.players || {})) p.levels = {};
     d.levelsV2 = true;
   }
+  // v3: two modes (difficulty / zone), keys are now "mode:n". The old numeric
+  // keys don't map, so reset per-level stars once more. Country records kept.
+  if (!d.levelsV3) {
+    for (const p of Object.values(d.players || {})) { p.levels = {}; p.dirty = {}; }
+    d.levelsV3 = true;
+  }
   return d;
 }
 
@@ -98,6 +104,16 @@ export function getStoredLang() {
 
 export function setStoredLang(l) {
   db.lang = l;
+  save();
+}
+
+// Which level progression is shown on the menu: 'difficulty' (default) or 'zone'.
+export function getLevelMode() {
+  return db.levelMode === 'zone' ? 'zone' : 'difficulty';
+}
+
+export function setLevelMode(m) {
+  db.levelMode = m === 'zone' ? 'zone' : 'difficulty';
   save();
 }
 

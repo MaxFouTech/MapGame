@@ -13,14 +13,29 @@ create table if not exists public.players (
 create table if not exists public.leaderboard (
   player_id uuid not null references public.players(id) on delete cascade,
   player_name text not null,
+  mode text not null default 'difficulty',  -- 'difficulty' | 'zone'
   level_n int not null,
   best_score int not null default 0,
   total int not null default 0,
   best_stars int not null default 0,
   plays int not null default 0,
   updated_at timestamptz default now(),
-  primary key (player_id, level_n)
+  primary key (player_id, mode, level_n)
 );
+
+-- Migration for an existing leaderboard table (safe to run repeatedly): add
+-- the mode column and make it part of the primary key.
+alter table public.leaderboard add column if not exists mode text not null default 'difficulty';
+do $$ begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'leaderboard_pkey'
+      and conrelid = 'public.leaderboard'::regclass
+      and array_length(conkey, 1) = 3
+  ) then
+    alter table public.leaderboard drop constraint if exists leaderboard_pkey;
+    alter table public.leaderboard add primary key (player_id, mode, level_n);
+  end if;
+end $$;
 
 alter table public.players enable row level security;
 alter table public.leaderboard enable row level security;

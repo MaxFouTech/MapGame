@@ -93,13 +93,14 @@ export async function createPlayer(name, hash, lang) {
   return { id: rows[0].id };
 }
 
-export async function pushLevel(cloudId, playerName, levelN, rec, total) {
-  const r = await req('/leaderboard?on_conflict=player_id,level_n', {
+export async function pushLevel(cloudId, playerName, mode, levelN, rec, total) {
+  const r = await req('/leaderboard?on_conflict=player_id,mode,level_n', {
     method: 'POST',
     headers: { Prefer: 'resolution=merge-duplicates' },
     body: JSON.stringify({
       player_id: cloudId,
       player_name: playerName,
+      mode,
       level_n: levelN,
       best_score: rec.highScore || 0,
       total,
@@ -113,7 +114,7 @@ export async function pushLevel(cloudId, playerName, levelN, rec, total) {
 
 export async function fetchLeaderboard() {
   const r = await req(
-    '/leaderboard?select=player_name,level_n,best_score,total,best_stars&order=best_score.desc&limit=2000');
+    '/leaderboard?select=player_name,mode,level_n,best_score,total,best_stars&order=best_score.desc&limit=4000');
   if (!r.ok) throw new Error('leaderboard ' + r.status);
   return r.json();
 }

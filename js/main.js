@@ -5,7 +5,7 @@
 //  - review:   endless adaptive session driven by the spaced-repetition
 //              scheduler over all countries
 
-import { LEVELS, PLAYABLE, displayName, levelOf, levelTitle } from './countries.js';
+import { MODES, DEFAULT_MODE, levelsOf, findLevel, PLAYABLE, displayName, levelOf, levelTitle } from './countries.js';
 import * as store from './storage.js';
 import * as sched from './scheduler.js';
 import { WorldMap } from './map.js';
@@ -46,6 +46,11 @@ function shuffle(arr) {
 function playerLevels() {
   return state.player.levels || (state.player.levels = {});
 }
+
+// Per-level progress is keyed by mode + level number so the two progressions
+// (difficulty / zone) never collide.
+function levelKey(mode, n) { return `${mode}:${n}`; }
+function levelRec(mode, n) { return playerLevels()[levelKey(mode, n)]; }
 
 // ---------- i18n ----------
 
@@ -291,13 +296,15 @@ async function syncDirty() {
   if (!p) return;
   if (!p.cloudId) { linkToCloud(state.playerName); return; }
   const dirty = Object.keys(p.dirty || {});
-  for (const lvlN of dirty) {
-    const lvl = LEVELS.find(l => l.n === Number(lvlN));
-    const rec = (p.levels || {})[lvlN];
-    if (!lvl || !rec) { delete p.dirty[lvlN]; continue; }
+  for (const key of dirty) {
+    // key = "mode:n" (older entries without a colon are stale — drop them).
+    const [lvlMode, nStr] = key.split(':');
+    const lvl = nStr ? findLevel(lvlMode, Number(nStr)) : null;
+    const rec = (p.levels || {})[key];
+    if (!lvl || !rec) { delete p.dirty[key]; continue; }
     try {
-      const ok = await cloud.pushLevel(p.cloudId, state.playerName, Number(lvlN), rec, lvl.countries.length);
-      if (ok) { delete p.dirty[lvlN]; store.persist(); }
+      const ok = await cloud.pushLevel(p.cloudId, state.playerName, lvlMode, Number(nStr), rec, lvl.countries.length);
+      if (ok) { delete p.dirty[key]; store.persist(); }
     } catch (e) { break; /* offline — keep dirty */ }
   }
   updateOnlineBadge();
@@ -328,34 +335,32 @@ function starsHtml(n, cls = '') {
     '</span>';
 }
 
-const LEVEL_GROUPS = [
-  { key: 'group_easy', levels: [1, 2] },
-  { key: 'group_medium', levels: [3, 4, 5, 6] },
-  { key: 'group_hard', levels: [7, 8] },
-  { key: 'group_ultimate', levels: [9, 10] },
-];
+// Current menu progression: 'difficulty' or 'zone'.
+state.mode = store.getLevelMode();
 
 // "Play" starts at the first level never completed (no star yet); once every
 // level has at least one star, at the first one not yet perfect; then level 1.
-function nextSequenceLevel() {
-  const lv = playerLevels();
-  const pending = LEVELS.find(l => !((lv[l.n] || {}).bestStars > 0));
+function nextSequenceLevel(mode) {
+  const levels = levelsOf(mode);
+  const pending = levels.find(l => !((levelRec(mode, l.n) || {}).bestStars > 0));
   if (pending) return pending.n;
-  const imperfect = LEVELS.find(l => (lv[l.n].bestStars || 0) < 3);
-  return imperfect ? imperfect.n : 1;
+  const imperfect = levels.find(l => ((levelRec(mode, l.n) || {}).bestStars || 0) < 3);
+  return imperfect ? imperfect.n : levels[0].n;
 }
 
 function renderMenu() {
   $('menu-player-name').textContent = state.playerName;
-  const seq = nextSequenceLevel();
+  const mode = state.mode;
+  document.querySelectorAll('#mode-tabs button').forEach(b =>
+    b.classList.toggle('on', b.dataset.mode === mode));
+  const seq = nextSequenceLevel(mode);
   $('btn-play').innerHTML = icon('play') + `<span>${t('playBtn')}</span>`;
   $('btn-play').dataset.level = seq;
   $('play-sub').textContent = t('playSub', { n: seq });
   updateChallengeBadge();
   const grid = $('level-grid');
   grid.innerHTML = '';
-  const lv = playerLevels();
-  for (const g of LEVEL_GROUPS) {
+  for (const g of MODES[mode].groups) {
     const head = document.createElement('h3');
     head.className = 'group-title';
     head.textContent = t(g.key);
@@ -363,27 +368,36 @@ function renderMenu() {
     const wrap = document.createElement('div');
     wrap.className = 'group-grid';
     for (const n of g.levels) {
-      const lvl = LEVELS.find(l => l.n === n);
-      const rec = lv[lvl.n] || {};
+      const lvl = findLevel(mode, n);
+      const rec = levelRec(mode, n) || {};
       const card = document.createElement('button');
       card.className = 'level-card' + (rec.bestStars === 3 ? ' gold' : '');
       card.innerHTML = `
-        <span class="level-num l${lvl.n}">${lvl.slam ? icon('crown') : lvl.n}</span>
+        <span class="level-num l${lvl.n}">${lvl.n}</span>
         <span class="level-body">
           <span class="level-title">${escapeHtml(levelTitle(lvl))}</span>
           <span class="level-meta">${t('countriesCount', { n: lvl.countries.length })}</span>
         </span>
         ${starsHtml(rec.bestStars || 0)}`;
-      card.addEventListener('click', () => startSeries(lvl.n));
+      card.addEventListener('click', () => startSeries(mode, lvl.n));
       wrap.appendChild(card);
     }
     grid.appendChild(wrap);
   }
 }
 
+function setMode(mode) {
+  if (!MODES[mode]) return;
+  state.mode = mode;
+  store.setLevelMode(mode);
+  renderMenu();
+}
+
 $('btn-switch-player').addEventListener('click', () => { renderPlayers(); show('screen-players'); refreshCloudPlayers(); });
-$('btn-play').addEventListener('click', e => startSeries(Number(e.currentTarget.dataset.level) || 1));
+$('btn-play').addEventListener('click', e => startSeries(state.mode, Number(e.currentTarget.dataset.level) || 1));
 $('btn-review').addEventListener('click', startReview);
+document.querySelectorAll('#mode-tabs button').forEach(b =>
+  b.addEventListener('click', () => setMode(b.dataset.mode)));
 
 // The hub groups leaderboard / country list / progress behind one menu
 // button, with tabs to switch between the three views.
@@ -519,7 +533,7 @@ async function renderLeaderboard(sel) {
     tabs.appendChild(b);
   };
   mkTab('total', t('lbTotal'));
-  for (const lvl of LEVELS) mkTab(lvl.n, lvl.slam ? icon('crown') : String(lvl.n));
+  for (const lvl of levelsOf(state.mode)) mkTab(lvl.n, String(lvl.n));
 
   const body = $('lb-body');
   let rows = state.lbRows;
@@ -534,6 +548,9 @@ async function renderLeaderboard(sel) {
   }
   if (sel !== state.lbSel) return; // user already switched tab
 
+  // Only rows for the currently selected mode (older rows may lack `mode`,
+  // treat those as difficulty).
+  rows = rows.filter(r => (r.mode || 'difficulty') === state.mode);
   const me = state.playerName;
   if (sel === 'total') {
     const byPlayer = new Map();
@@ -552,7 +569,7 @@ async function renderLeaderboard(sel) {
         <td class="num gold-cell">${a.gold ? icon('medal') + '×' + a.gold : '—'}</td></tr>`).join('')}
       </tbody></table>` : `<p class="hint">${t('lbEmpty')}</p>`;
   } else {
-    const lvl = LEVELS.find(l => l.n === Number(sel));
+    const lvl = findLevel(state.mode, Number(sel));
     const list = rows.filter(r => r.level_n === Number(sel))
       .sort((a, b) => b.best_score - a.best_score || b.best_stars - a.best_stars)
       .slice(0, 30);
@@ -578,9 +595,8 @@ function renderCountryList() {
 
   const body = $('country-list-body');
   body.innerHTML = '';
-  const lv = playerLevels();
-  for (const lvl of LEVELS.filter(l => !l.slam)) {
-    const rec = lv[lvl.n] || {};
+  for (const lvl of levelsOf(state.mode)) {
+    const rec = levelRec(state.mode, lvl.n) || {};
     const sec = document.createElement('div');
     sec.className = 'country-section';
     const chips = [...lvl.countries]
@@ -802,32 +818,33 @@ async function enterGame() {
   state.map.refit();
 }
 
-async function startSeries(levelN) {
-  const lvl = LEVELS.find(l => l.n === levelN);
+async function startSeries(levelMode, levelN) {
+  const lvl = findLevel(levelMode, levelN);
+  if (!lvl) return;
   await enterGame();
   state.session = newSession('series', {
-    levelN, queue: shuffle(lvl.countries), total: lvl.countries.length,
+    levelMode, levelN, queue: shuffle(lvl.countries), total: lvl.countries.length,
   });
   nextQuestion();
   frameLevel(lvl);
 }
 
-// Regional levels open framed on their region; world-wide levels (1:
-// giants, 9: islands, 10: grand slam) keep the global view.
+// Levels flagged `world` (globally scattered) keep the global view; the
+// others open framed on their region.
 function frameLevel(lvl) {
-  if (!lvl || lvl.slam || lvl.n === 1 || lvl.n === 9) state.map.zoomReset();
+  if (!lvl || lvl.world) state.map.zoomReset();
   else state.map.zoomToFeatures(lvl.countries, 900);
 }
 
-async function startTraining(levelN, missed) {
+async function startTraining(levelMode, levelN, missed) {
   await enterGame();
   const needs = {};
   for (const n of missed) needs[n] = TRAIN_GOAL;
   state.session = newSession('training', {
-    levelN, queue: shuffle(missed), needs,
+    levelMode, levelN, queue: shuffle(missed), needs,
   });
   nextQuestion();
-  frameLevel(LEVELS.find(l => l.n === levelN));
+  frameLevel(findLevel(levelMode, levelN));
 }
 
 async function startReview() {
@@ -1082,13 +1099,14 @@ function commonSessionSave(s, { updateLevel = false } = {}) {
   }
   if (updateLevel) {
     const lv = playerLevels();
-    const rec = lv[s.levelN] || (lv[s.levelN] = { bestStars: 0, plays: 0, highScore: 0 });
+    const key = levelKey(s.levelMode, s.levelN);
+    const rec = lv[key] || (lv[key] = { bestStars: 0, plays: 0, highScore: 0 });
     rec.plays++;
     rec.bestStars = Math.max(rec.bestStars, s.stars);
     rec.lastScore = s.correct;
     rec.highScore = Math.max(rec.highScore || 0, s.correct);
     rec.lastMissed = [...new Set(s.misses)];
-    p.dirty = { ...(p.dirty || {}), [s.levelN]: true };
+    p.dirty = { ...(p.dirty || {}), [key]: true };
   }
   store.persist();
   if (updateLevel) syncDirty();
@@ -1167,16 +1185,18 @@ function openSummary(s, { title, stars = null, subtitle = '', resumable = false,
   if (missed.length && s.levelN) {
     trainBtn.classList.remove('hidden');
     trainBtn.innerHTML = icon('target') + `<span>${t('trainBtn', { n: missed.length })}</span>`;
-    state.lastSeries = { levelN: s.levelN, missed };
+    state.lastSeries = { levelMode: s.levelMode, levelN: s.levelN, missed };
   } else {
     trainBtn.classList.add('hidden');
-    if (s.levelN) state.lastSeries = { levelN: s.levelN, missed: [] };
+    if (s.levelN) state.lastSeries = { levelMode: s.levelMode, levelN: s.levelN, missed: [] };
   }
   $('btn-again').innerHTML = s.mode === 'review'
     ? icon('repeat') + `<span>${t('reviewAgainBtn')}</span>`
     : icon('replay') + `<span>${t('replayBtn')}</span>`;
   $('btn-again').dataset.mode = s.mode === 'review' ? 'review' : 'series';
   $('btn-again').dataset.level = s.levelN || '';
+  $('btn-again').dataset.levelmode = s.levelMode || '';
+  $('btn-next-level').dataset.levelmode = s.levelMode || '';
   $('btn-summary-menu').textContent = t('menuBtn');
   state.session = null;
 
@@ -1201,12 +1221,12 @@ function endSeries() {
   s.stars = starsFor(s);
   if (s.stars === 3) state.player.perfectRuns = (state.player.perfectRuns || 0) + 1;
   commonSessionSave(s, { updateLevel: true });
-  const lvl = LEVELS.find(l => l.n === s.levelN);
+  const lvl = findLevel(s.levelMode, s.levelN);
   openSummary(s, {
     title: s.stars === 3 ? t('perfectTitle') : t('seriesDone'),
     stars: s.stars,
     subtitle: `<p class="summary-level">${t('levelLabel', { n: s.levelN })} · ${escapeHtml(levelTitle(lvl))}</p>`,
-    nextLevel: LEVELS.some(l => l.n === s.levelN + 1) ? s.levelN + 1 : null,
+    nextLevel: findLevel(s.levelMode, s.levelN + 1) ? s.levelN + 1 : null,
   });
 }
 
@@ -1260,17 +1280,20 @@ $('btn-resume').addEventListener('click', () => {
 });
 $('btn-training').addEventListener('click', () => {
   flushPausedSession();
-  if (state.lastSeries?.missed.length) startTraining(state.lastSeries.levelN, state.lastSeries.missed);
+  if (state.lastSeries?.missed.length) {
+    startTraining(state.lastSeries.levelMode, state.lastSeries.levelN, state.lastSeries.missed);
+  }
 });
 $('btn-again').addEventListener('click', e => {
   flushPausedSession();
   const mode = e.currentTarget.dataset.mode;
   if (mode === 'review') startReview();
-  else startSeries(Number(e.currentTarget.dataset.level) || state.lastSeries?.levelN || 1);
+  else startSeries(e.currentTarget.dataset.levelmode || state.lastSeries?.levelMode || DEFAULT_MODE,
+    Number(e.currentTarget.dataset.level) || state.lastSeries?.levelN || 1);
 });
 $('btn-next-level').addEventListener('click', e => {
   flushPausedSession();
-  startSeries(Number(e.currentTarget.dataset.level));
+  startSeries(e.currentTarget.dataset.levelmode || DEFAULT_MODE, Number(e.currentTarget.dataset.level));
 });
 $('btn-summary-menu').addEventListener('click', () => {
   flushPausedSession();

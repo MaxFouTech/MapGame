@@ -1,115 +1,149 @@
-// Curated playable countries, organized as ordered LEVELS (easiest first).
+// Curated playable countries. Two independent progressions ("modes") over
+// the SAME 197 countries:
+//   - difficulty: 8 levels ordered by notoriety (most-known first);
+//   - zone:       5 levels, one per continent.
 // Country keys are the exact `properties.name` values from world-atlas
 // countries-50m.json. Anything not listed renders as a non-playable
 // territory (muted color, never asked).
-// Each level holds 20-30 countries grouped by difficulty and theme, so a
-// "series" (one full pass over a level) stays a satisfying session length.
 
 import { getLang } from './i18n.js';
 
-// Levels are geographic clusters ordered by difficulty: confusions come
-// from neighbours (Niger/Nigeria, Slovakia/Slovenia…), so a cluster learned
-// as one block sticks better than the same countries spread across levels.
-// `diff` is the 1-5 difficulty shown on the level card.
-export const LEVELS = [
-  {
-    n: 1, en: 'World Giants', fr: 'Les géants du monde', diff: 1,
-    countries: [
-      'United States of America', 'Canada', 'Mexico', 'Brazil', 'Argentina',
-      'Russia', 'China', 'India', 'Australia', 'New Zealand', 'Egypt',
-      'South Africa', 'France', 'Germany', 'Spain', 'Italy',
-      'United Kingdom', 'Japan', 'Turkey', 'Saudi Arabia', 'Indonesia',
-    ],
-  },
-  {
-    n: 2, en: 'Western & Northern Europe', fr: "L'Europe de l'Ouest et du Nord", diff: 1,
-    countries: [
-      'Portugal', 'Ireland', 'Iceland', 'Norway', 'Sweden', 'Finland',
-      'Denmark', 'Netherlands', 'Belgium', 'Luxembourg', 'Switzerland',
-      'Austria', 'Malta',
-    ],
-  },
-  {
-    n: 3, en: 'Central Europe, Baltics & Balkans', fr: 'Europe centrale, Baltes et Balkans', diff: 3,
-    countries: [
-      'Poland', 'Czechia', 'Slovakia', 'Hungary', 'Slovenia', 'Croatia',
-      'Bosnia and Herz.', 'Serbia', 'Montenegro', 'Macedonia', 'Albania',
-      'Kosovo', 'Greece', 'Bulgaria', 'Romania', 'Moldova', 'Ukraine',
-      'Belarus', 'Lithuania', 'Latvia', 'Estonia', 'Cyprus',
-    ],
-  },
-  {
-    n: 4, en: 'Latin America & Caribbean', fr: 'Amérique latine et Caraïbes', diff: 2,
-    countries: [
-      'Colombia', 'Venezuela', 'Guyana', 'Suriname', 'Ecuador', 'Peru',
-      'Bolivia', 'Chile', 'Paraguay', 'Uruguay', 'Cuba', 'Haiti',
-      'Dominican Rep.', 'Jamaica', 'Bahamas', 'Trinidad and Tobago',
-      'Belize', 'Guatemala', 'Honduras', 'El Salvador', 'Nicaragua',
-      'Costa Rica', 'Panama',
-    ],
-  },
-  {
-    n: 5, en: 'South & East Asia', fr: "L'Asie du Sud et de l'Est", diff: 3,
-    countries: [
-      'Mongolia', 'North Korea', 'South Korea', 'Taiwan', 'Philippines',
-      'Vietnam', 'Laos', 'Cambodia', 'Thailand', 'Myanmar', 'Malaysia',
-      'Singapore', 'Brunei', 'Timor-Leste', 'Papua New Guinea',
-      'Bangladesh', 'Sri Lanka', 'Nepal', 'Bhutan', 'Pakistan',
-    ],
-  },
-  {
-    n: 6, en: 'Middle East, Caucasus & Central Asia', fr: 'Moyen-Orient, Caucase et Asie centrale', diff: 4,
-    countries: [
-      'Iran', 'Iraq', 'Syria', 'Lebanon', 'Israel', 'Palestine', 'Jordan',
-      'Yemen', 'Oman', 'United Arab Emirates', 'Qatar', 'Bahrain',
-      'Kuwait', 'Georgia', 'Armenia', 'Azerbaijan', 'Kazakhstan',
-      'Uzbekistan', 'Turkmenistan', 'Kyrgyzstan', 'Tajikistan',
-      'Afghanistan',
-    ],
-  },
-  {
-    n: 7, en: 'Africa: The Landmarks', fr: "L'Afrique des repères", diff: 3,
-    countries: [
-      'Morocco', 'Algeria', 'Tunisia', 'Libya', 'W. Sahara', 'Ethiopia',
-      'Kenya', 'Nigeria', 'Madagascar', 'Mali', 'Niger', 'Chad', 'Sudan',
-      'Somalia', 'Tanzania', 'Mozambique', 'Angola', 'Namibia', 'Botswana',
-      'Zimbabwe', 'Zambia', 'Ghana', 'Senegal', 'Cameroon',
-      'Dem. Rep. Congo',
-    ],
-  },
-  {
-    n: 8, en: 'Africa in Detail', fr: "L'Afrique en détail", diff: 4,
-    countries: [
-      'Benin', 'Togo', 'Burkina Faso', "Côte d'Ivoire", 'Guinea',
-      'Sierra Leone', 'Liberia', 'Mauritania', 'Gabon', 'Congo',
-      'Central African Rep.', 'S. Sudan', 'Eritrea', 'Djibouti', 'Uganda',
-      'Rwanda', 'Burundi', 'Malawi', 'Lesotho', 'eSwatini', 'Eq. Guinea',
-      'Guinea-Bissau', 'Gambia',
-    ],
-  },
-  {
-    n: 9, en: 'Microstates & Islands of the World', fr: 'Micro-États et îles du monde', diff: 5,
-    countries: [
-      'Andorra', 'Liechtenstein', 'Monaco', 'San Marino', 'Vatican',
-      'Comoros', 'Cabo Verde', 'São Tomé and Principe', 'Seychelles',
-      'Mauritius', 'Maldives', 'Solomon Is.', 'Vanuatu', 'Fiji', 'Samoa',
-      'Tonga', 'Kiribati', 'Micronesia', 'Marshall Is.', 'Palau', 'Nauru',
-      'Tuvalu', 'St. Kitts and Nevis', 'Antigua and Barb.', 'Dominica',
-      'Saint Lucia', 'St. Vin. and Gren.', 'Grenada', 'Barbados',
-    ],
-  },
+// ----- Difficulty mode: ordered by how well-known each country is. -----
+const DIFFICULTY = [
+  { n: 1, en: 'Must-know', fr: 'Incontournables', world: true, countries: [
+    'France', 'Germany', 'United Kingdom', 'Italy', 'Spain', 'Portugal',
+    'Netherlands', 'Belgium', 'Switzerland', 'Greece', 'Russia',
+    'United States of America', 'Canada', 'Mexico', 'Brazil', 'Argentina',
+    'China', 'Japan', 'India', 'South Korea', 'Turkey', 'Egypt', 'Morocco',
+    'South Africa', 'Australia',
+  ] },
+  { n: 2, en: 'Well-known', fr: 'Très connus', world: true, countries: [
+    'Austria', 'Ireland', 'Luxembourg', 'Sweden', 'Norway', 'Denmark',
+    'Finland', 'Iceland', 'Poland', 'Ukraine', 'Chile', 'Colombia', 'Peru',
+    'Venezuela', 'Cuba', 'North Korea', 'Indonesia', 'Thailand', 'Vietnam',
+    'Philippines', 'Pakistan', 'Iran', 'Iraq', 'Israel', 'Saudi Arabia',
+    'Algeria', 'Nigeria', 'New Zealand',
+  ] },
+  { n: 3, en: 'Familiar', fr: 'Connus', world: true, countries: [
+    'Czechia', 'Hungary', 'Romania', 'Bulgaria', 'Croatia', 'Serbia',
+    'Belarus', 'Monaco', 'Vatican', 'Kazakhstan', 'Mongolia', 'Malaysia',
+    'Singapore', 'Taiwan', 'Nepal', 'Sri Lanka', 'Bangladesh', 'Afghanistan',
+    'United Arab Emirates', 'Lebanon', 'Syria', 'Tunisia', 'Kenya', 'Ethiopia',
+  ] },
+  { n: 4, en: 'Moderate', fr: 'Moyennement connus', world: true, countries: [
+    'Slovakia', 'Slovenia', 'Bosnia and Herz.', 'Albania', 'Lithuania',
+    'Latvia', 'Estonia', 'Cyprus', 'Malta', 'Uruguay', 'Paraguay', 'Bolivia',
+    'Ecuador', 'Costa Rica', 'Panama', 'Jamaica', 'Haiti', 'Dominican Rep.',
+    'Cambodia', 'Myanmar', 'Jordan', 'Kuwait', 'Qatar', 'Libya', 'Sudan',
+    'Somalia', 'Dem. Rep. Congo', 'Madagascar',
+  ] },
+  { n: 5, en: 'Less common', fr: 'Moins courants', world: true, countries: [
+    'Montenegro', 'Macedonia', 'Moldova', 'Andorra', 'Liechtenstein',
+    'San Marino', 'Uzbekistan', 'Azerbaijan', 'Armenia', 'Georgia', 'Laos',
+    'Oman', 'Bahrain', 'Yemen', 'Senegal', "Côte d'Ivoire", 'Ghana',
+    'Cameroon', 'Tanzania', 'Mali', 'Niger', 'Chad',
+  ] },
+  { n: 6, en: 'Uncommon', fr: 'Peu courants', world: true, countries: [
+    'Guatemala', 'Honduras', 'Nicaragua', 'El Salvador', 'Belize',
+    'Trinidad and Tobago', 'Guyana', 'Suriname', 'Rwanda', 'Zimbabwe',
+    'Uganda', 'Angola', 'Mozambique', 'Burkina Faso', 'Mauritania', 'Namibia',
+    'Botswana', 'Zambia', 'Papua New Guinea', 'Fiji', 'Kosovo', 'Palestine',
+  ] },
+  { n: 7, en: 'Rare', fr: 'Rares', world: true, countries: [
+    'Turkmenistan', 'Kyrgyzstan', 'Tajikistan', 'Bhutan', 'Brunei', 'Maldives',
+    'Timor-Leste', 'Benin', 'Togo', 'Guinea', 'Sierra Leone', 'Liberia',
+    'Gambia', 'Guinea-Bissau', 'Cabo Verde', 'Gabon', 'Congo',
+    'Central African Rep.', 'Eq. Guinea', 'Djibouti', 'Eritrea', 'S. Sudan',
+    'Burundi', 'Malawi', 'Lesotho', 'Bahamas',
+  ] },
+  { n: 8, en: 'Obscure', fr: 'Confidentiels', world: true, countries: [
+    'eSwatini', 'Mauritius', 'Seychelles', 'Comoros', 'São Tomé and Principe',
+    'Solomon Is.', 'Vanuatu', 'Samoa', 'Tonga', 'Kiribati', 'Micronesia',
+    'Marshall Is.', 'Palau', 'Nauru', 'Tuvalu', 'Antigua and Barb.',
+    'Barbados', 'Dominica', 'Grenada', 'St. Kitts and Nevis', 'Saint Lucia',
+    'St. Vin. and Gren.',
+  ] },
 ];
 
-const NAME_TO_LEVEL = new Map();
-for (const lvl of LEVELS) for (const c of lvl.countries) NAME_TO_LEVEL.set(c, lvl.n);
+// ----- Zone mode: the same countries grouped by continent. -----
+const ZONES = [
+  { n: 1, en: 'Europe', fr: 'Europe', world: false, countries: [
+    'France', 'Germany', 'United Kingdom', 'Italy', 'Spain', 'Portugal',
+    'Netherlands', 'Belgium', 'Switzerland', 'Greece', 'Russia', 'Austria',
+    'Ireland', 'Luxembourg', 'Sweden', 'Norway', 'Denmark', 'Finland',
+    'Iceland', 'Poland', 'Ukraine', 'Czechia', 'Hungary', 'Romania',
+    'Bulgaria', 'Croatia', 'Serbia', 'Belarus', 'Monaco', 'Vatican',
+    'Slovakia', 'Slovenia', 'Bosnia and Herz.', 'Albania', 'Lithuania',
+    'Latvia', 'Estonia', 'Cyprus', 'Malta', 'Montenegro', 'Macedonia',
+    'Moldova', 'Andorra', 'Liechtenstein', 'San Marino', 'Kosovo',
+  ] },
+  { n: 2, en: 'Americas', fr: 'Amériques', world: false, countries: [
+    'United States of America', 'Canada', 'Mexico', 'Brazil', 'Argentina',
+    'Chile', 'Colombia', 'Peru', 'Cuba', 'Venezuela', 'Uruguay', 'Paraguay',
+    'Bolivia', 'Ecuador', 'Costa Rica', 'Panama', 'Jamaica', 'Haiti',
+    'Dominican Rep.', 'Guatemala', 'Honduras', 'Nicaragua', 'El Salvador',
+    'Belize', 'Trinidad and Tobago', 'Guyana', 'Suriname', 'Bahamas',
+    'Antigua and Barb.', 'Barbados', 'Dominica', 'Grenada',
+    'St. Kitts and Nevis', 'Saint Lucia', 'St. Vin. and Gren.',
+  ] },
+  { n: 3, en: 'Asia & Middle East', fr: 'Asie & Moyen-Orient', world: false, countries: [
+    'China', 'Japan', 'India', 'South Korea', 'North Korea', 'Indonesia',
+    'Thailand', 'Vietnam', 'Philippines', 'Pakistan', 'Turkey', 'Saudi Arabia',
+    'Iran', 'Iraq', 'Israel', 'United Arab Emirates', 'Singapore', 'Kazakhstan',
+    'Mongolia', 'Malaysia', 'Taiwan', 'Nepal', 'Sri Lanka', 'Bangladesh',
+    'Afghanistan', 'Lebanon', 'Syria', 'Cambodia', 'Myanmar', 'Jordan',
+    'Kuwait', 'Qatar', 'Uzbekistan', 'Azerbaijan', 'Armenia', 'Georgia',
+    'Laos', 'Oman', 'Bahrain', 'Yemen', 'Turkmenistan', 'Kyrgyzstan',
+    'Tajikistan', 'Bhutan', 'Brunei', 'Maldives', 'Timor-Leste', 'Palestine',
+  ] },
+  { n: 4, en: 'Africa', fr: 'Afrique', world: false, countries: [
+    'Egypt', 'Morocco', 'South Africa', 'Nigeria', 'Kenya', 'Algeria',
+    'Tunisia', 'Ethiopia', 'Libya', 'Sudan', 'Somalia', 'Dem. Rep. Congo',
+    'Madagascar', 'Senegal', "Côte d'Ivoire", 'Ghana', 'Cameroon', 'Tanzania',
+    'Mali', 'Niger', 'Chad', 'Rwanda', 'Zimbabwe', 'Uganda', 'Angola',
+    'Mozambique', 'Burkina Faso', 'Mauritania', 'Namibia', 'Botswana',
+    'Zambia', 'Benin', 'Togo', 'Guinea', 'Sierra Leone', 'Liberia', 'Gambia',
+    'Guinea-Bissau', 'Cabo Verde', 'Gabon', 'Congo', 'Central African Rep.',
+    'Eq. Guinea', 'Djibouti', 'Eritrea', 'S. Sudan', 'Burundi', 'Malawi',
+    'Lesotho', 'eSwatini', 'Mauritius', 'Seychelles', 'Comoros',
+    'São Tomé and Principe',
+  ] },
+  { n: 5, en: 'Oceania', fr: 'Océanie', world: true, countries: [
+    'Australia', 'New Zealand', 'Papua New Guinea', 'Fiji', 'Solomon Is.',
+    'Vanuatu', 'Samoa', 'Tonga', 'Kiribati', 'Micronesia', 'Marshall Is.',
+    'Palau', 'Nauru', 'Tuvalu',
+  ] },
+];
 
-// Grand Slam: a bonus series over every playable country. It is a playable
-// level but does not own any country — levelOf() keeps returning the
-// thematic level 1-9.
-LEVELS.push({
-  n: 10, slam: true, en: 'Grand Slam', fr: 'Grand Chelem', diff: 5,
-  countries: [...NAME_TO_LEVEL.keys()],
-});
+// The two selectable progressions. `levelOf()` (the difficulty badge) and the
+// playable universe are anchored on the difficulty mode.
+export const MODES = {
+  difficulty: {
+    en: 'Difficulty', fr: 'Difficulté',
+    groups: [
+      { key: 'group_easy', levels: [1, 2] },
+      { key: 'group_medium', levels: [3, 4] },
+      { key: 'group_hard', levels: [5, 6] },
+      { key: 'group_ultimate', levels: [7, 8] },
+    ],
+    levels: DIFFICULTY,
+  },
+  zone: {
+    en: 'Regions', fr: 'Zones',
+    groups: [{ key: 'group_zone', levels: [1, 2, 3, 4, 5] }],
+    levels: ZONES,
+  },
+};
+export const DEFAULT_MODE = 'difficulty';
+export function levelsOf(mode) { return (MODES[mode] || MODES.difficulty).levels; }
+export function findLevel(mode, n) { return levelsOf(mode).find(l => l.n === n); }
+
+const LEVELS = DIFFICULTY;
+
+// The difficulty levels partition every playable country exactly once, so
+// levelOf() (the badge/stats) is anchored on them.
+const NAME_TO_LEVEL = new Map();
+for (const lvl of DIFFICULTY) for (const c of lvl.countries) NAME_TO_LEVEL.set(c, lvl.n);
 
 export function levelOf(name) {
   return NAME_TO_LEVEL.get(name) || 0;
