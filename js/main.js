@@ -72,6 +72,7 @@ function applyStaticI18n() {
   });
   $('prompt-label').textContent = t('find');
   $('btn-dontknow').innerHTML = icon('eye') + `<span>${t('showMe')}</span>`;
+  $('btn-restart').innerHTML = icon('replay') + `<span>${t('restartBtn')}</span>`;
   $('btn-end').innerHTML = icon('stop') + `<span>${t('endSession')}</span>`;
   updateMapModeUi();
   updateOnlineBadge();
@@ -134,8 +135,10 @@ state.cloudPlayers = [];   // fetched from Supabase
 state.pinRequest = null;   // { name, mode: 'select'|'set'|'link' }
 
 function renderPlayers() {
-  // The reset button only makes sense once a player is active.
+  // The reset button and "back to menu" only make sense once a player is
+  // active — selecting a player is required before the menu is reachable.
   $('reset-wrap').classList.toggle('hidden', !state.player);
+  $('btn-players-back').classList.toggle('hidden', !state.player);
   const list = $('player-list');
   list.innerHTML = '';
   const players = store.listPlayers();
@@ -394,6 +397,12 @@ function setMode(mode) {
 }
 
 $('btn-switch-player').addEventListener('click', () => { renderPlayers(); show('screen-players'); refreshCloudPlayers(); });
+// Back to the menu from the player screen — only when a player is already set.
+$('btn-players-back').addEventListener('click', () => {
+  if (!state.player) return;
+  renderMenu();
+  show('screen-menu');
+});
 $('btn-play').addEventListener('click', e => startSeries(state.mode, Number(e.currentTarget.dataset.level) || 1));
 $('btn-review').addEventListener('click', startReview);
 document.querySelectorAll('#mode-tabs button').forEach(b =>
@@ -976,6 +985,7 @@ function onValidate(feature) {
     state.continueOk = true;
     $('zoom-hint').classList.add('hidden');
     state.map.highlight(target, 'correct-flash');
+    state.map.labelFound(target);
     const pt = state.map.screenPointOf(target);
     confettiBurst(pt ? pt[0] : state.map.width / 2, pt ? pt[1] : state.map.height / 2);
     popFeedback('✓', s.streak >= 3 ? icon('flame') + t('streakRow', { n: s.streak }) : '');
@@ -1270,6 +1280,15 @@ $('map').addEventListener('click', e => {
 
 $('btn-dontknow').addEventListener('click', giveUp);
 $('btn-end').addEventListener('click', endSessionEarly);
+// Restart the level/session currently in progress from scratch.
+$('btn-restart').addEventListener('click', () => {
+  const s = state.session;
+  if (!s) return;
+  state.pausedSession = null;
+  if (s.mode === 'training') startTraining(s.levelMode, s.levelN, Object.keys(s.needs));
+  else if (s.mode === 'review') startReview();
+  else startSeries(s.levelMode, s.levelN);
+});
 $('btn-resume').addEventListener('click', () => {
   const s = state.pausedSession;
   if (!s) return;

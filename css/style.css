@@ -109,6 +109,7 @@ h3 { margin: 22px 0 6px; }
 /* ===== language switch ===== */
 .lang-switch { display: inline-flex; border: 2px solid #dbe4ea; border-radius: 999px; overflow: hidden; }
 #screen-players .lang-switch { position: absolute; top: 16px; right: 16px; }
+.players-top { display: flex; align-items: center; min-height: 30px; margin-bottom: 4px; }
 #screen-players .panel { position: relative; }
 .lang-switch button {
   border: none; background: #fff; padding: 4px 12px; font-weight: 700;
@@ -477,7 +478,8 @@ h3 { margin: 22px 0 6px; }
 .map-label .ml-inner text { text-anchor: start; }
 .map-label-halo { stroke: #fff; stroke-linejoin: round; fill: #fff; paint-order: stroke; }
 .map-label.guess .map-label-text { fill: var(--bad); }
-.map-label.target .map-label-text { fill: #1b7a4e; }
+.map-label.target .map-label-text,
+.map-label.found .map-label-text { fill: #1b7a4e; }
 .ml-flag { filter: drop-shadow(0 0 1px rgba(255, 255, 255, .95)); }
 
 /* The hud containers span the map but must not swallow clicks in the empty

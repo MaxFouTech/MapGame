@@ -398,6 +398,14 @@ export class GlobeMap {
     this.overlay.selectAll('*').remove();
   }
 
+  // Label a just-found country with its flag + name (cleared next question).
+  labelFound(name) {
+    const f = this.byName.get(name);
+    if (!f) return;
+    this._labels = [{ name, kind: 'found', lonlat: d3.geoCentroid(mainGeometry(f)) }];
+    this._renderOverlay();
+  }
+
   cancelAnimations() {
     this.svg.interrupt('globe');
   }

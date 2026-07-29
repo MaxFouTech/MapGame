@@ -343,6 +343,11 @@ export class WorldMap {
     this.overlay.selectAll('*').remove();
   }
 
+  // Label a just-found country with its flag + name (cleared next question).
+  labelFound(name) {
+    this._label(name, 'found');
+  }
+
   // Wrong answer: zoom out to fit both countries, then draw a curved arrow
   // from the guess to the target and label both.
   showCorrection(guessName, targetName) {

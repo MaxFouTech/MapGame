@@ -22,8 +22,11 @@
 <!-- ===== Player selection ===== -->
 <div id="screen-players" class="screen active">
   <div class="panel">
-    <div class="lang-switch" id="lang-switch-players">
-      <button data-lang="fr">FR</button><button data-lang="en">EN</button>
+    <div class="players-top">
+      <button id="btn-players-back" class="btn ghost hidden" data-i18n="backToMenu"></button>
+      <div class="lang-switch" id="lang-switch-players">
+        <button data-lang="fr">FR</button><button data-lang="en">EN</button>
+      </div>
     </div>
     <h1 class="logo"><span class="logo-ico"></span>MapGame</h1>
     <p class="tagline" data-i18n="tagline"></p>
@@ -217,6 +220,7 @@
       </div>
       <div class="hud-actions">
         <button id="btn-dontknow" class="btn small ghost"></button>
+        <button id="btn-restart" class="btn small ghost"></button>
         <button id="btn-end" class="btn small ghost danger"></button>
       </div>
     </div>
