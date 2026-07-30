@@ -332,9 +332,14 @@ cloud.onStatus(updateOnlineBadge);
 
 // ---------- menu screen ----------
 
+// U+FE0E (text variation selector) forces monochrome text rendering of the
+// star so iOS Safari honours the CSS gold `color` instead of drawing it with
+// the colour-emoji font (which ignores `color`).
+const STAR = '★︎';
+
 function starsHtml(n, cls = '') {
   return `<span class="stars ${cls}">` +
-    [1, 2, 3].map(i => `<span class="${i <= n ? 'star on' : 'star'}">★</span>`).join('') +
+    [1, 2, 3].map(i => `<span class="${i <= n ? 'star on' : 'star'}">${STAR}</span>`).join('') +
     '</span>';
 }
 
@@ -588,7 +593,7 @@ async function renderLeaderboard(sel) {
       <tbody>${list.map((r, i) => `
         <tr class="${r.player_name === me ? 'me' : ''}"><td class="num">${i + 1}</td>
         <td>${escapeHtml(r.player_name)}</td><td class="num">${r.best_score}/${r.total}</td>
-        <td>${'★'.repeat(r.best_stars) || '—'}</td></tr>`).join('')}
+        <td>${STAR.repeat(r.best_stars) || '—'}</td></tr>`).join('')}
       </tbody></table>` : `<p class="hint">${t('lbEmpty')}</p>`);
   }
 }

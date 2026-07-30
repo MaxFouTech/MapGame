@@ -348,7 +348,9 @@ h3 { margin: 22px 0 6px; }
 .level-foot { display: flex; align-items: center; gap: 10px; }
 
 .stars { letter-spacing: .1em; font-size: 1rem; }
-.stars .star { color: #d5dde3; }
+/* Force text (not colour-emoji) rendering so the gold `color` is honoured on
+   iOS Safari, which otherwise draws ★ with the emoji font. */
+.stars .star { color: #d5dde3; font-variant-emoji: text; }
 .stars .star.on { color: #f4b400; text-shadow: 0 1px 3px rgba(200,140,0,.35); }
 .stars.big { font-size: 2.6rem; letter-spacing: .15em; }
 .summary-stars { text-align: center; margin: 6px 0 4px; }
