@@ -19,6 +19,7 @@ import * as themes from './themes.js';
 const d3 = window.d3;
 const $ = id => document.getElementById(id);
 
+const APP_VERSION = '1.1.0';                    // bump on each release
 const TRAIN_GOAL = 2;                           // finds needed to clear a trained country
 const state = {
   playerName: null,
@@ -74,6 +75,7 @@ function applyStaticI18n() {
   $('btn-dontknow').innerHTML = icon('eye') + `<span>${t('showMe')}</span>`;
   $('btn-restart').innerHTML = icon('replay') + `<span>${t('restartBtn')}</span>`;
   $('btn-end').innerHTML = icon('stop') + `<span>${t('endSession')}</span>`;
+  $('app-version').textContent = 'v' + APP_VERSION;
   updateMapModeUi();
   updateOnlineBadge();
   document.documentElement.lang = getLang();

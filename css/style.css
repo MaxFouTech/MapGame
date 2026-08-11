@@ -164,6 +164,7 @@ h3 { margin: 22px 0 6px; }
 }
 .menu-footer-spacer { flex: 1; }
 .online-badge { font-size: .8rem; color: var(--ink-soft); display: inline-flex; align-items: center; gap: 5px; }
+.app-version { font-size: .72rem; color: #b6c2cb; letter-spacing: .02em; }
 .online-badge.off { color: #c96a1e; }
 .gold-cell { color: #b8860b; white-space: nowrap; }
 .gold-cell .ico { vertical-align: -0.22em; }
