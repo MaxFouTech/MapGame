@@ -19,7 +19,7 @@ import * as themes from './themes.js';
 const d3 = window.d3;
 const $ = id => document.getElementById(id);
 
-const APP_VERSION = '1.1.0';                    // bump on each release
+const APP_VERSION = '1.2.0';                    // bump on each release
 const TRAIN_GOAL = 2;                           // finds needed to clear a trained country
 const state = {
   playerName: null,
@@ -240,6 +240,7 @@ function selectPlayer(name) {
   renderMenu();
   show('screen-menu');
   syncDirty();
+  hydrateLevelsFromCloud();
 }
 
 function playerMsg(text) {
@@ -291,7 +292,7 @@ async function linkToCloud(name) {
     }
     store.persist();
     updateOnlineBadge();
-    if (p.cloudId) syncDirty();
+    if (p.cloudId) { syncDirty(); hydrateLevelsFromCloud(); }
   } catch (e) { /* offline — will retry on next sync */ }
 }
 
@@ -313,6 +314,30 @@ async function syncDirty() {
     } catch (e) { break; /* offline — keep dirty */ }
   }
   updateOnlineBadge();
+}
+
+// Pull the player's best stars/scores back from the shared leaderboard into
+// local storage, so the menu reflects results earned on another device (or
+// wiped by a local migration). We keep the MAX of local and cloud, so local
+// progress that hasn't synced yet is never lost.
+async function hydrateLevelsFromCloud() {
+  const p = state.player;
+  if (!p || !state.playerName) return;
+  let rows;
+  try { rows = await cloud.fetchLeaderboard(); } catch (e) { return; }
+  const lv = playerLevels();
+  let changed = false;
+  for (const r of rows) {
+    if (r.player_name !== state.playerName) continue;
+    const key = `${r.mode || 'difficulty'}:${r.level_n}`;
+    const rec = lv[key] || (lv[key] = { bestStars: 0, plays: 0, highScore: 0 });
+    if ((r.best_stars || 0) > (rec.bestStars || 0)) { rec.bestStars = r.best_stars; changed = true; }
+    if ((r.best_score || 0) > (rec.highScore || 0)) { rec.highScore = r.best_score; changed = true; }
+  }
+  if (changed) {
+    store.persist();
+    if (state.currentScreen === 'screen-menu') renderMenu();
+  }
 }
 
 async function refreshCloudPlayers() {
@@ -1360,7 +1385,7 @@ ensureMap().catch(e => console.warn('map init failed', e));
 // Probe the leaderboard backend; offline mode is fine, we retry on use.
 cloud.ping().then(ok => {
   updateOnlineBadge();
-  if (ok) { refreshCloudPlayers(); syncDirty(); }
+  if (ok) { refreshCloudPlayers(); syncDirty(); hydrateLevelsFromCloud(); }
 });
 
 // Test hook for automated QA (harmless in production).
