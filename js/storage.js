@@ -135,14 +135,18 @@ export function setTheme(key) {
   save();
 }
 
-// Whether the country name is shown in the prompt (default) or hidden so the
-// flag is the only hint.
-export function getShowNames() {
-  return db.showNames !== false;
+// Which hint the prompt shows: 'name' (default), 'flag' or 'capital'.
+// Falls back to the older boolean `showNames` preference.
+const HINTS = ['name', 'flag', 'capital'];
+
+export function getHint() {
+  if (HINTS.includes(db.hint)) return db.hint;
+  return db.showNames === false ? 'flag' : 'name';
 }
 
-export function setShowNames(v) {
-  db.showNames = !!v;
+export function setHint(h) {
+  db.hint = HINTS.includes(h) ? h : 'name';
+  delete db.showNames; // superseded
   save();
 }
 

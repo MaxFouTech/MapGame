@@ -94,15 +94,22 @@
       </div>
     </div>
 
+    <p class="tabs-label" data-i18n="levelsLabel"></p>
     <nav id="mode-tabs" class="mode-tabs">
       <button data-mode="difficulty" data-i18n="modeDifficulty"></button>
       <button data-mode="zone" data-i18n="modeZone"></button>
     </nav>
+    <p class="tabs-label" data-i18n="hintLabel"></p>
+    <nav id="hint-tabs" class="mode-tabs">
+      <button data-hint="name" data-i18n="hintName"></button>
+      <button data-hint="flag" data-i18n="hintFlag"></button>
+      <button data-hint="capital" data-i18n="hintCapital"></button>
+    </nav>
+    <p id="hint-sub" class="hint hint-sub"></p>
 
     <div class="start-block">
       <button id="btn-play" class="btn primary big"></button>
       <p id="play-sub" class="hint"></p>
-      <span id="challenge-badge" class="challenge-badge hidden"></span>
     </div>
 
     <h2 class="secondary-title" data-i18n="chooseLevels"></h2>
@@ -135,12 +142,6 @@
     <div class="lang-switch map-switch" id="map-switch">
       <button data-mode="2d">2D</button><button data-mode="globe">3D</button>
     </div>
-    <p class="pop-label" data-i18n="challengeTitle"></p>
-    <label class="toggle-row">
-      <input type="checkbox" id="challenge-toggle">
-      <span data-i18n="challengeLabel"></span>
-    </label>
-    <p class="hint" data-i18n="challengeHint"></p>
   </div>
 </div>
 

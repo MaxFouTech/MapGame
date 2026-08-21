@@ -14,12 +14,13 @@ import { t, setLang, getLang } from './i18n.js';
 import * as cloud from './cloud.js';
 import { icon } from './icons.js';
 import { flagHtml } from './flags.js';
+import { capitalOf } from './capitals.js';
 import * as themes from './themes.js';
 
 const d3 = window.d3;
 const $ = id => document.getElementById(id);
 
-const APP_VERSION = '1.2.0';                    // bump on each release
+const APP_VERSION = '1.3.0';                    // bump on each release
 const TRAIN_GOAL = 2;                           // finds needed to clear a trained country
 const state = {
   playerName: null,
@@ -48,10 +49,18 @@ function playerLevels() {
   return state.player.levels || (state.player.levels = {});
 }
 
-// Per-level progress is keyed by mode + level number so the two progressions
-// (difficulty / zone) never collide.
-function levelKey(mode, n) { return `${mode}:${n}`; }
-function levelRec(mode, n) { return playerLevels()[levelKey(mode, n)]; }
+// A "progression" combines the level set with the hint type, e.g.
+// 'difficulty', 'difficulty-capital', 'zone-flag'. Stars and leaderboard rows
+// are keyed by it, so each hint keeps its own progress and rankings stay
+// comparable. The part before the dash selects the level definitions.
+function progKey(mode = state.mode, hint = state.hint) {
+  return hint === 'name' ? mode : `${mode}-${hint}`;
+}
+function baseMode(prog) { return String(prog || DEFAULT_MODE).split('-')[0]; }
+
+// Per-level progress is keyed by progression + level number.
+function levelKey(prog, n) { return `${prog}:${n}`; }
+function levelRec(prog, n) { return playerLevels()[levelKey(prog, n)]; }
 
 // ---------- i18n ----------
 
@@ -305,7 +314,7 @@ async function syncDirty() {
   for (const key of dirty) {
     // key = "mode:n" (older entries without a colon are stale — drop them).
     const [lvlMode, nStr] = key.split(':');
-    const lvl = nStr ? findLevel(lvlMode, Number(nStr)) : null;
+    const lvl = nStr ? findLevel(baseMode(lvlMode), Number(nStr)) : null;
     const rec = (p.levels || {})[key];
     if (!lvl || !rec) { delete p.dirty[key]; continue; }
     try {
@@ -372,27 +381,33 @@ function starsHtml(n, cls = '') {
 
 // Current menu progression: 'difficulty' or 'zone'.
 state.mode = store.getLevelMode();
+// Which hint the prompt gives: 'name' | 'flag' | 'capital'.
+state.hint = store.getHint();
 
 // "Play" starts at the first level never completed (no star yet); once every
 // level has at least one star, at the first one not yet perfect; then level 1.
 function nextSequenceLevel(mode) {
   const levels = levelsOf(mode);
-  const pending = levels.find(l => !((levelRec(mode, l.n) || {}).bestStars > 0));
+  const prog = progKey(mode);
+  const pending = levels.find(l => !((levelRec(prog, l.n) || {}).bestStars > 0));
   if (pending) return pending.n;
-  const imperfect = levels.find(l => ((levelRec(mode, l.n) || {}).bestStars || 0) < 3);
+  const imperfect = levels.find(l => ((levelRec(prog, l.n) || {}).bestStars || 0) < 3);
   return imperfect ? imperfect.n : levels[0].n;
 }
 
 function renderMenu() {
   $('menu-player-name').textContent = state.playerName;
   const mode = state.mode;
+  const prog = progKey(mode);
   document.querySelectorAll('#mode-tabs button').forEach(b =>
     b.classList.toggle('on', b.dataset.mode === mode));
+  document.querySelectorAll('#hint-tabs button').forEach(b =>
+    b.classList.toggle('on', b.dataset.hint === state.hint));
+  $('hint-sub').textContent = t('hint_' + state.hint);
   const seq = nextSequenceLevel(mode);
   $('btn-play').innerHTML = icon('play') + `<span>${t('playBtn')}</span>`;
   $('btn-play').dataset.level = seq;
   $('play-sub').textContent = t('playSub', { n: seq });
-  updateChallengeBadge();
   const grid = $('level-grid');
   grid.innerHTML = '';
   for (const g of MODES[mode].groups) {
@@ -404,7 +419,7 @@ function renderMenu() {
     wrap.className = 'group-grid';
     for (const n of g.levels) {
       const lvl = findLevel(mode, n);
-      const rec = levelRec(mode, n) || {};
+      const rec = levelRec(prog, n) || {};
       const card = document.createElement('button');
       card.className = 'level-card' + (rec.bestStars === 3 ? ' gold' : '');
       card.innerHTML = `
@@ -414,7 +429,7 @@ function renderMenu() {
           <span class="level-meta">${t('countriesCount', { n: lvl.countries.length })}</span>
         </span>
         ${starsHtml(rec.bestStars || 0)}`;
-      card.addEventListener('click', () => startSeries(mode, lvl.n));
+      card.addEventListener('click', () => startSeries(prog, lvl.n));
       wrap.appendChild(card);
     }
     grid.appendChild(wrap);
@@ -428,6 +443,16 @@ function setMode(mode) {
   renderMenu();
 }
 
+// The hint type is a progression of its own: switching it swaps the stars
+// shown on the cards and the leaderboard the scores go to.
+function setHint(hint) {
+  state.hint = hint;
+  store.setHint(hint);
+  renderMenu();
+  // Apply straight away if a question is already on screen.
+  if (state.session && state.target && state.phase === 'asking') renderPrompt(state.target);
+}
+
 $('btn-switch-player').addEventListener('click', () => { renderPlayers(); show('screen-players'); refreshCloudPlayers(); });
 // Back to the menu from the player screen — only when a player is already set.
 $('btn-players-back').addEventListener('click', () => {
@@ -435,10 +460,12 @@ $('btn-players-back').addEventListener('click', () => {
   renderMenu();
   show('screen-menu');
 });
-$('btn-play').addEventListener('click', e => startSeries(state.mode, Number(e.currentTarget.dataset.level) || 1));
+$('btn-play').addEventListener('click', e => startSeries(progKey(), Number(e.currentTarget.dataset.level) || 1));
 $('btn-review').addEventListener('click', startReview);
 document.querySelectorAll('#mode-tabs button').forEach(b =>
   b.addEventListener('click', () => setMode(b.dataset.mode)));
+document.querySelectorAll('#hint-tabs button').forEach(b =>
+  b.addEventListener('click', () => setHint(b.dataset.hint)));
 
 // The hub groups leaderboard / country list / progress behind one menu
 // button, with tabs to switch between the three views.
@@ -591,7 +618,7 @@ async function renderLeaderboard(sel) {
 
   // Only rows for the currently selected mode (older rows may lack `mode`,
   // treat those as difficulty).
-  rows = rows.filter(r => (r.mode || 'difficulty') === state.mode);
+  rows = rows.filter(r => (r.mode || 'difficulty') === progKey());
   const me = state.playerName;
   if (sel === 'total') {
     const byPlayer = new Map();
@@ -637,7 +664,7 @@ function renderCountryList() {
   const body = $('country-list-body');
   body.innerHTML = '';
   for (const lvl of levelsOf(state.mode)) {
-    const rec = levelRec(state.mode, lvl.n) || {};
+    const rec = levelRec(progKey(), lvl.n) || {};
     const sec = document.createElement('div');
     sec.className = 'country-section';
     const chips = [...lvl.countries]
@@ -822,8 +849,6 @@ async function applyTheme(key) {
 
 $('btn-display').addEventListener('click', () => {
   renderThemeGrid();
-  // Challenge = names hidden, so the checkbox is the inverse of showNames.
-  $('challenge-toggle').checked = !store.getShowNames();
   show('screen-display');
 });
 $('btn-display-back').addEventListener('click', () => { renderMenu(); show('screen-menu'); });
@@ -831,19 +856,6 @@ $('theme-grid').addEventListener('click', e => {
   const btn = e.target.closest('.theme-swatch');
   if (btn) applyTheme(btn.dataset.theme);
 });
-$('challenge-toggle').addEventListener('change', e => {
-  store.setShowNames(!e.target.checked); // checked = challenge on = hide names
-  updateChallengeBadge();
-  // Apply immediately if a question is on screen.
-  if (state.session && state.target && state.phase === 'asking') renderPrompt(state.target);
-});
-
-function updateChallengeBadge() {
-  const badge = $('challenge-badge');
-  const on = !store.getShowNames();
-  badge.classList.toggle('hidden', !on);
-  if (on) badge.innerHTML = icon('flag') + `<span>${t('challengeBadge')}</span>`;
-}
 
 
 function newSession(mode, extra = {}) {
@@ -860,7 +872,7 @@ async function enterGame() {
 }
 
 async function startSeries(levelMode, levelN) {
-  const lvl = findLevel(levelMode, levelN);
+  const lvl = findLevel(baseMode(levelMode), levelN);
   if (!lvl) return;
   await enterGame();
   state.session = newSession('series', {
@@ -885,7 +897,7 @@ async function startTraining(levelMode, levelN, missed) {
     levelMode, levelN, queue: shuffle(missed), needs,
   });
   nextQuestion();
-  frameLevel(findLevel(levelMode, levelN));
+  frameLevel(findLevel(baseMode(levelMode), levelN));
 }
 
 async function startReview() {
@@ -947,12 +959,23 @@ function requeue(queue, name, minAhead = 2) {
 // The prompt shows the flag before the name; with names hidden, only a large
 // flag is shown as the hint.
 function renderPrompt(name) {
-  const showNames = store.getShowNames();
+  const hint = state.hint;
   const el = $('prompt-country');
-  el.classList.toggle('flag-only', !showNames);
-  el.innerHTML = showNames
-    ? flagHtml(name) + `<span class="prompt-name">${escapeHtml(displayName(name))}</span>`
-    : flagHtml(name, 'flag-xl');
+  // The label is hidden on mobile to save room, but in capital mode it is the
+  // only thing telling the player what the city name is for — keep it then.
+  $('prompt-label').textContent = t(hint === 'capital' ? 'findCapital' : 'find');
+  $('prompt-label').classList.toggle('capital', hint === 'capital');
+  el.classList.toggle('flag-only', hint === 'flag');
+  if (hint === 'flag') {
+    // Flag alone — the hardest hint.
+    el.innerHTML = flagHtml(name, 'flag-xl');
+  } else if (hint === 'capital') {
+    // No flag here: it would give the answer away and defeat the exercise.
+    const cap = capitalOf(name);
+    el.innerHTML = `<span class="prompt-name">${escapeHtml(cap || displayName(name))}</span>`;
+  } else {
+    el.innerHTML = flagHtml(name) + `<span class="prompt-name">${escapeHtml(displayName(name))}</span>`;
+  }
   // Restart the attention pop so it plays on every new question.
   if (!REDUCED_MOTION) {
     el.classList.remove('pop-in');
@@ -1263,12 +1286,12 @@ function endSeries() {
   s.stars = starsFor(s);
   if (s.stars === 3) state.player.perfectRuns = (state.player.perfectRuns || 0) + 1;
   commonSessionSave(s, { updateLevel: true });
-  const lvl = findLevel(s.levelMode, s.levelN);
+  const lvl = findLevel(baseMode(s.levelMode), s.levelN);
   openSummary(s, {
     title: s.stars === 3 ? t('perfectTitle') : t('seriesDone'),
     stars: s.stars,
     subtitle: `<p class="summary-level">${t('levelLabel', { n: s.levelN })} · ${escapeHtml(levelTitle(lvl))}</p>`,
-    nextLevel: findLevel(s.levelMode, s.levelN + 1) ? s.levelN + 1 : null,
+    nextLevel: findLevel(baseMode(s.levelMode), s.levelN + 1) ? s.levelN + 1 : null,
   });
 }
 
@@ -1339,12 +1362,12 @@ $('btn-again').addEventListener('click', e => {
   flushPausedSession();
   const mode = e.currentTarget.dataset.mode;
   if (mode === 'review') startReview();
-  else startSeries(e.currentTarget.dataset.levelmode || state.lastSeries?.levelMode || DEFAULT_MODE,
+  else startSeries(e.currentTarget.dataset.levelmode || state.lastSeries?.levelMode || progKey(),
     Number(e.currentTarget.dataset.level) || state.lastSeries?.levelN || 1);
 });
 $('btn-next-level').addEventListener('click', e => {
   flushPausedSession();
-  startSeries(e.currentTarget.dataset.levelmode || DEFAULT_MODE, Number(e.currentTarget.dataset.level));
+  startSeries(e.currentTarget.dataset.levelmode || progKey(), Number(e.currentTarget.dataset.level));
 });
 $('btn-summary-menu').addEventListener('click', () => {
   flushPausedSession();
@@ -1399,8 +1422,9 @@ window.__mapgame = {
     const f = state.map?.byName.get(name);
     if (f) onValidate(f);
   },
-  setShowNames(v) {
-    store.setShowNames(v);
+  setHint(h) {
+    state.hint = h;
+    store.setHint(h);
     if (state.target) renderPrompt(state.target);
   },
 };
