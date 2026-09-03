@@ -156,6 +156,12 @@ h3 { margin: 22px 0 6px; }
 }
 #new-player-pin:focus, #pin-input:focus { border-color: var(--accent); }
 .player-row.cloud .player-row-meta::before { content: '☁️ '; }
+.player-row.guest .player-row-name { color: var(--ink-soft); }
+.guest-btn { width: 100%; justify-content: center; margin: -8px 0 18px; border: 2px dashed #cfd9e1; }
+.guest-hint {
+  text-align: left; font-size: .88rem; color: #8a6d1a; margin: 6px 0 14px;
+  padding: 10px 12px; border-radius: 10px; background: rgba(240, 163, 94, .14);
+}
 
 /* ===== menu footer / online badge ===== */
 .menu-footer {
@@ -165,6 +171,15 @@ h3 { margin: 22px 0 6px; }
 .menu-footer-spacer { flex: 1; }
 .online-badge { font-size: .8rem; color: var(--ink-soft); display: inline-flex; align-items: center; gap: 5px; }
 .app-version { font-size: .72rem; color: #b6c2cb; letter-spacing: .02em; }
+
+/* New-version toast (service worker update). */
+.update-toast {
+  position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 100;
+  display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+  background: rgba(29, 43, 54, .94); color: #fff; border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .25); font-size: .9rem;
+}
+.update-toast .btn { padding: 6px 12px; }
 .online-badge.off { color: #c96a1e; }
 .gold-cell { color: #b8860b; white-space: nowrap; }
 .gold-cell .ico { vertical-align: -0.22em; }

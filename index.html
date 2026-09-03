@@ -19,6 +19,12 @@
      playable board during a game. -->
 <div id="map"></div>
 
+<!-- Shown when a newer version has been installed by the service worker. -->
+<div id="update-toast" class="update-toast hidden">
+  <span data-i18n="updateReady"></span>
+  <button id="btn-update-reload" class="btn primary small" data-i18n="updateReload"></button>
+</div>
+
 <!-- ===== Player selection ===== -->
 <div id="screen-players" class="screen active">
   <div class="panel">
@@ -30,6 +36,7 @@
     </div>
     <h1 class="logo"><span class="logo-ico"></span>MapGame</h1>
     <p class="tagline" data-i18n="tagline"></p>
+    <button id="btn-guest" class="btn ghost guest-btn" data-i18n="guestBtn" data-icon="play"></button>
     <h3 id="pick-title" class="section-title hidden" data-i18n="pickTitle"></h3>
     <div id="player-list" class="player-list"></div>
     <p id="cloud-players-title" class="hint hidden" data-i18n="cloudPlayers"></p>
@@ -46,6 +53,7 @@
       <p id="pin-error" class="pin-error hidden"></p>
     </div>
 
+    <p id="guest-hint" class="guest-hint hidden" data-i18n="guestHint"></p>
     <h3 id="create-title" class="section-title" data-i18n="orCreate"></h3>
     <p class="hint" data-i18n="createHint"></p>
     <!-- Not a <form>: sandboxed embeds (artifact viewers) block form submission. -->

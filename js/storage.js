@@ -35,6 +35,31 @@ function save() {
   }
 }
 
+// Guest: a local-only profile with no PIN and no cloud identity, so anyone
+// can start playing without creating an account. Its progress is carried
+// over when the player later creates a real account (adoptGuest).
+export const GUEST = '__guest';
+
+export function createGuest() {
+  return createPlayer(GUEST, { guest: true, localOnly: true });
+}
+
+export function adoptGuest(name) {
+  const g = db.players[GUEST], p = db.players[name];
+  if (!g || !p || name === GUEST) return;
+  for (const k of ['qIndex', 'totalScore', 'bestStreak', 'perfectRuns',
+                   'records', 'sessions', 'snapshots', 'levels']) {
+    if (g[k] !== undefined) p[k] = g[k];
+  }
+  // Every level result becomes pending for the cloud, so the new account's
+  // stars show up online once linked.
+  p.dirty = {};
+  for (const key of Object.keys(p.levels || {})) p.dirty[key] = true;
+  delete db.players[GUEST];
+  if (db.lastPlayer === GUEST) db.lastPlayer = name;
+  save();
+}
+
 export function listPlayers() {
   return Object.keys(db.players).sort((a, b) =>
     (db.players[b].lastPlayed || 0) - (db.players[a].lastPlayed || 0));

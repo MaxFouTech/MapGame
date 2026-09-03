@@ -20,7 +20,7 @@ import * as themes from './themes.js';
 const d3 = window.d3;
 const $ = id => document.getElementById(id);
 
-const APP_VERSION = '1.3.0';                    // bump on each release
+const APP_VERSION = '1.4.0';                    // bump on each release
 const TRAIN_GOAL = 2;                           // finds needed to clear a trained country
 const state = {
   playerName: null,
@@ -43,6 +43,11 @@ function shuffle(arr) {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
+}
+
+// The guest profile has a reserved internal name; show a friendly label.
+function playerLabel(name) {
+  return name === store.GUEST ? t('guestName') : name;
 }
 
 function playerLevels() {
@@ -161,13 +166,18 @@ function renderPlayers() {
     const p = store.getPlayer(name);
     const snap = sched.snapshot(p, PLAYABLE);
     const row = document.createElement('button');
-    row.className = 'player-row';
-    row.innerHTML = `<span class="player-row-name">${escapeHtml(name)}</span>
+    row.className = 'player-row' + (p.guest ? ' guest' : '');
+    row.innerHTML = `<span class="player-row-name">${escapeHtml(playerLabel(name))}</span>
       <span class="player-row-meta">${snap.known}/${PLAYABLE.length} ${t('known')}</span>`;
+    // A guest has no PIN: it is selected directly.
     row.addEventListener('click', () =>
-      openPinPanel(name, p.pinHash ? 'select' : 'set'));
+      p.guest ? selectPlayer(name) : openPinPanel(name, p.pinHash ? 'select' : 'set'));
     list.appendChild(row);
   }
+  // Only offer "play as guest" while no guest profile exists yet (otherwise
+  // it is in the list above); explain the upgrade path while playing as one.
+  $('btn-guest').classList.toggle('hidden', !!store.getPlayer(store.GUEST));
+  $('guest-hint').classList.toggle('hidden', !state.player?.guest);
 
   // Cloud players not present on this device (log in from another browser).
   const localNames = new Set(players);
@@ -266,13 +276,19 @@ async function addPlayer() {
   if (!/^\d{4}$/.test(pin)) { playerMsg(t('pinFormat')); return; }
   if (store.getPlayer(name)) { openPinPanel(name, store.getPlayer(name).pinHash ? 'select' : 'set'); return; }
   const hash = await cloud.pinHash(name, pin);
+  const fromGuest = !!state.player?.guest;
   store.createPlayer(name, { pinHash: hash });
+  if (fromGuest) store.adoptGuest(name);
   $('new-player-name').value = '';
   $('new-player-pin').value = '';
   selectPlayer(name);
   linkToCloud(name);
 }
 $('btn-add-player').addEventListener('click', addPlayer);
+$('btn-guest').addEventListener('click', () => {
+  store.createGuest();
+  selectPlayer(store.GUEST);
+});
 $('new-player-name').addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); $('new-player-pin').focus(); }
 });
@@ -285,7 +301,7 @@ $('new-player-pin').addEventListener('keydown', e => {
 // Create or attach the cloud identity for a local player (fire-and-forget).
 async function linkToCloud(name) {
   const p = store.getPlayer(name);
-  if (!p || !p.pinHash || p.cloudId || p.localOnly) return;
+  if (!p || p.guest || !p.pinHash || p.cloudId || p.localOnly) return;
   try {
     const res = await cloud.createPlayer(name, p.pinHash, getLang());
     if (res.conflict) {
@@ -308,7 +324,7 @@ async function linkToCloud(name) {
 // Push pending level results for the current player.
 async function syncDirty() {
   const p = state.player;
-  if (!p) return;
+  if (!p || p.guest) return;
   if (!p.cloudId) { linkToCloud(state.playerName); return; }
   const dirty = Object.keys(p.dirty || {});
   for (const key of dirty) {
@@ -331,7 +347,7 @@ async function syncDirty() {
 // progress that hasn't synced yet is never lost.
 async function hydrateLevelsFromCloud() {
   const p = state.player;
-  if (!p || !state.playerName) return;
+  if (!p || p.guest || !state.playerName) return;
   let rows;
   try { rows = await cloud.fetchLeaderboard(); } catch (e) { return; }
   const lv = playerLevels();
@@ -396,7 +412,7 @@ function nextSequenceLevel(mode) {
 }
 
 function renderMenu() {
-  $('menu-player-name').textContent = state.playerName;
+  $('menu-player-name').textContent = playerLabel(state.playerName);
   const mode = state.mode;
   const prog = progKey(mode);
   document.querySelectorAll('#mode-tabs button').forEach(b =>
@@ -694,7 +710,7 @@ function levelBadge(n) {
 
 function renderStats() {
   const p = state.player;
-  $('stats-player-name').textContent = state.playerName;
+  $('stats-player-name').textContent = playerLabel(state.playerName);
   const snap = sched.snapshot(p, PLAYABLE);
 
   $('stats-summary').innerHTML = `
@@ -1406,6 +1422,23 @@ else show('screen-players'); // starts the background globe
 ensureMap().catch(e => console.warn('map init failed', e));
 
 // Probe the leaderboard backend; offline mode is fine, we retry on use.
+// Service worker: instant repeat loads + offline play (see sw.js). When a
+// new version has been installed behind the current page, offer a reload.
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('./sw.js').then(reg => {
+    reg.addEventListener('updatefound', () => {
+      const w = reg.installing;
+      if (!w) return;
+      w.addEventListener('statechange', () => {
+        if (w.state === 'installed' && navigator.serviceWorker.controller) {
+          $('update-toast').classList.remove('hidden');
+        }
+      });
+    });
+  }).catch(e => console.warn('sw registration failed', e));
+}
+$('btn-update-reload').addEventListener('click', () => location.reload());
+
 cloud.ping().then(ok => {
   updateOnlineBadge();
   if (ok) { refreshCloudPlayers(); syncDirty(); hydrateLevelsFromCloud(); }
